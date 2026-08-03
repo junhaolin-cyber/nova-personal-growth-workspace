@@ -14,7 +14,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const isZh = locale === "zh";
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#E3E5EE] bg-[#F0F1F7] px-5 py-6 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#D9DCE8] bg-[#E7E8F1] px-5 py-6 lg:flex lg:flex-col">
         <Link href="/" className="mb-10 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span>
           <span className="font-[Manrope] text-[17px] font-extrabold tracking-[-0.04em]">NOVA</span>
