@@ -7,6 +7,21 @@ import { Bell, ChevronDown, Command, Languages, LayoutDashboard, Menu, Plus, Sea
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { activeIconShapes, modules } from "@/lib/modules";
 
+const activeModuleStyles: Record<string, string> = {
+  today: "bg-[#E7E9FF] text-[#5452C7]",
+  english: "bg-[#DDEFE4] text-[#43845D]",
+  speaking: "bg-[#F7E5D5] text-[#B26F3C]",
+  finance: "bg-[#E9E5FA] text-[#7D68B7]",
+  ledger: "bg-[#DCEEF1] text-[#3D8290]",
+  food: "bg-[#F8E7D4] text-[#C07C3F]",
+  exercise: "bg-[#E0F0E2] text-[#4F9060]",
+  news: "bg-[#E5EBF4] text-[#55739B]",
+  stocks: "bg-[#F1E9DE] text-[#9A774C]",
+  assistant: "bg-[#E8E7F7] text-[#625FA8]",
+  "trend-sports": "bg-[#F0E7F6] text-[#8A5BA6]",
+  "movies-tv": "bg-[#E4EDF5] text-[#557B9C]",
+};
+
 export function AppShell({ activeModule }: { activeModule?: string }) {
   const pathname = usePathname();
   const [locale, setLocale] = React.useState<"zh" | "en">("zh");
@@ -22,9 +37,9 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
         <nav className="space-y-1">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "工作台" : "Workspace"}</p>
           <NavItem href="/" active={active === "dashboard"} icon={<LayoutDashboard size={18} strokeWidth={1.8} />} label={isZh ? "总览" : "Overview"} />
-          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} activeIconShape={activeIconShapes[item.slug]} />)}
+          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={activeModuleStyles[item.slug]} activeIconShape={activeIconShapes[item.slug]} />)}
           <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "生活记录" : "Life log"}</p>
-          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} activeIconShape={activeIconShapes[item.slug]} />)}
+          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={activeModuleStyles[item.slug]} activeIconShape={activeIconShapes[item.slug]} />)}
         </nav>
         <div className="mt-auto space-y-1">
           <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={18} strokeWidth={1.8} />} label={isZh ? "设置" : "Settings"} />
