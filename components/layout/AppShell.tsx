@@ -14,20 +14,20 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const isZh = locale === "zh";
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#D9DCE8] bg-[#E7E8F1] px-5 py-6 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#C9CCDE] bg-[#DCDDED] px-5 py-6 lg:flex lg:flex-col">
         <Link href="/" className="mb-10 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span>
           <span className="font-[Manrope] text-[17px] font-extrabold tracking-[-0.04em]">NOVA</span>
         </Link>
         <nav className="space-y-1">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "工作台" : "Workspace"}</p>
-          <NavItem href="/" active={active === "dashboard"} icon={<LayoutDashboard size={17} />} label={isZh ? "总览" : "Overview"} />
-          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} />)}
+          <NavItem href="/" active={active === "dashboard"} icon={<LayoutDashboard size={17} />} label={isZh ? "总览" : "Overview"} iconTone="bg-[#E7E7FB] text-[#5E5CE6]" />
+          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} iconTone={item.tone} />)}
           <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "生活记录" : "Life log"}</p>
-          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} />)}
+          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} iconTone={item.tone} />)}
         </nav>
         <div className="mt-auto space-y-1">
-          <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={17} />} label={isZh ? "设置" : "Settings"} />
+          <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={17} />} label={isZh ? "设置" : "Settings"} iconTone="bg-white/60 text-[#6F748D]" />
           <div className="mt-4 flex items-center gap-3 border-t border-line px-2 pt-5">
             <div className="grid size-9 place-items-center rounded-full bg-[#F0E8DD] text-sm font-bold text-[#8A6C49]">A</div>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Alex Chen</p><p className="text-xs text-muted">{isZh ? "个人空间" : "Personal space"}</p></div>
@@ -46,8 +46,8 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   );
 }
 
-function NavItem({ href, active, icon, label }: { href: string; active: boolean; icon: React.ReactNode; label: string }) {
-  return <Link href={href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${active ? "bg-[#F0F0FF] text-accent" : "text-muted hover:bg-canvas hover:text-ink"}`}><span className={active ? "text-accent" : "text-[#9298A1] group-hover:text-ink"}>{icon}</span>{label}</Link>;
+function NavItem({ href, active, icon, label, iconTone }: { href: string; active: boolean; icon: React.ReactNode; label: string; iconTone?: string }) {
+  return <Link href={href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${active ? "bg-[#F0F0FF] text-accent" : "text-muted hover:bg-white/60 hover:text-ink"}`}><span className={`grid size-7 place-items-center rounded-lg ${iconTone ?? (active ? "bg-white/70 text-accent" : "bg-white/50 text-[#74799A] group-hover:bg-white group-hover:text-ink")}`}>{icon}</span>{label}</Link>;
 }
 
 function ModulePlaceholder({ slug, locale }: { slug: string; locale: "zh" | "en" }) {
