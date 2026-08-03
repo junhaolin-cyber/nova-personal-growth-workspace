@@ -29,8 +29,8 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
         <div className="mt-auto space-y-1">
           <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={18} strokeWidth={1.8} />} label={isZh ? "设置" : "Settings"} />
           <div className="mt-4 flex items-center gap-3 border-t border-line px-2 pt-5">
-            <div className="grid size-9 place-items-center rounded-full bg-[#F0E8DD] text-sm font-bold text-[#8A6C49]">A</div>
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Alex Chen</p><p className="text-xs text-muted">{isZh ? "个人空间" : "Personal space"}</p></div>
+            <div className="grid size-9 place-items-center rounded-full bg-[#F0E8DD] text-sm font-bold text-[#8A6C49]">J</div>
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Jie</p><p className="text-xs text-muted">{isZh ? "个人空间" : "Personal space"}</p></div>
             <ChevronDown size={15} className="text-muted" />
           </div>
         </div>
