@@ -17,7 +17,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#C9CCDE] bg-[#DCDDED] px-5 py-6 lg:flex lg:flex-col">
         <Link href="/" className="mb-10 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span>
-          <span className="font-[Manrope] text-[17px] font-extrabold tracking-[-0.04em]">NOVA</span>
+          <span className="font-sans text-[17px] font-extrabold tracking-[-0.02em]">NOVA</span>
         </Link>
         <nav className="space-y-1">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "工作台" : "Workspace"}</p>
