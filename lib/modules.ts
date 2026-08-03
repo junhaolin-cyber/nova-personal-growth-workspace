@@ -19,3 +19,18 @@ export const modules: ModuleDefinition[] = [
 ];
 
 export const moduleMap = Object.fromEntries(modules.map((item) => [item.slug, item]));
+
+export const activeIconShapes: Record<string, string> = {
+  today: "rounded-xl",
+  english: "rounded-full",
+  speaking: "rounded-[11px] -rotate-3",
+  finance: "rounded-full",
+  ledger: "rounded-[8px]",
+  food: "rounded-full rotate-3",
+  exercise: "rounded-[10px] rotate-3",
+  news: "rounded-[8px]",
+  stocks: "rounded-[10px] -rotate-2",
+  assistant: "rounded-full",
+  "trend-sports": "rounded-[10px] -rotate-3",
+  "movies-tv": "rounded-[7px] rotate-2",
+};

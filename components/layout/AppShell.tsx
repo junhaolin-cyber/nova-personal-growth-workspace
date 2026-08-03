@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronDown, Command, Languages, LayoutDashboard, Menu, Plus, Search, Settings2, Sparkles, UserRound } from "lucide-react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
-import { modules } from "@/lib/modules";
+import { activeIconShapes, modules } from "@/lib/modules";
 
 export function AppShell({ activeModule }: { activeModule?: string }) {
   const pathname = usePathname();
@@ -22,9 +22,9 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
         <nav className="space-y-1">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "工作台" : "Workspace"}</p>
           <NavItem href="/" active={active === "dashboard"} icon={<LayoutDashboard size={18} strokeWidth={1.8} />} label={isZh ? "总览" : "Overview"} />
-          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} />)}
+          {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} activeIconShape={activeIconShapes[item.slug]} />)}
           <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "生活记录" : "Life log"}</p>
-          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} />)}
+          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={18} strokeWidth={1.8} />} label={isZh ? item.label : item.labelEn} iconColor={item.iconColor} activeTone={item.tone} activeIconShape={activeIconShapes[item.slug]} />)}
         </nav>
         <div className="mt-auto space-y-1">
           <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={18} strokeWidth={1.8} />} label={isZh ? "设置" : "Settings"} />
@@ -46,8 +46,8 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   );
 }
 
-function NavItem({ href, active, icon, label, iconColor, activeTone }: { href: string; active: boolean; icon: React.ReactNode; label: string; iconColor?: string; activeTone?: string }) {
-  return <Link href={href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition ${active ? (activeTone ?? "bg-[#F0F0FF] text-accent") : "text-muted hover:bg-white/60 hover:text-ink"}`}><span className={`grid size-7 place-items-center rounded-lg ${active ? "bg-white/70" : ""} ${iconColor ?? "text-[#6D7283] group-hover:text-ink"}`}>{icon}</span>{label}</Link>;
+function NavItem({ href, active, icon, label, iconColor, activeTone, activeIconShape }: { href: string; active: boolean; icon: React.ReactNode; label: string; iconColor?: string; activeTone?: string; activeIconShape?: string }) {
+  return <Link href={href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${active ? `${activeTone ?? "bg-[#F0F0FF] text-accent"} font-semibold shadow-sm` : "font-medium text-muted hover:bg-white/60 hover:text-ink"}`}><span className={`grid size-7 place-items-center transition-transform duration-200 ${active ? `bg-white/70 shadow-sm ${activeIconShape ?? "rounded-lg"} scale-105` : ""} ${iconColor ?? "text-[#6D7283] group-hover:text-ink"}`}>{icon}</span>{label}</Link>;
 }
 
 function ModulePlaceholder({ slug, locale }: { slug: string; locale: "zh" | "en" }) {
