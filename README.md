@@ -4,6 +4,18 @@ NOVA 是一个面向个人长期使用的 AI 智能成长工作台，目标是�
 
 当前版本为第一阶段基础框架，暂不接入数据库和真实 AI 能力，页面使用 Mock Data，并已预留后续扩展位置。
 
+## 面向未来的架构预留
+
+项目已预留以下扩展边界，当前均未启用：
+
+- 用户登录：通过服务层接入认证 Provider；
+- 云数据库：通过 Repository 层替换 Mock Data；
+- 多设备同步：通过统一实体 ID、版本号、设备 ID 和同步状态支持增量同步与冲突处理；
+- 手机与电脑同步：通过账号身份和云端同步服务共享同一份个人数据；
+- PWA 安装：通过独立的 PWA 层接入 Manifest、Service Worker 和离线缓存。
+
+核心数据类型位于 `lib/types/core.ts`，能力开关位于 `lib/config/runtime.ts`，服务层边界说明位于 `lib/services/README.md`。
+
 ## 当前内容
 
 - Dashboard 总览首页
