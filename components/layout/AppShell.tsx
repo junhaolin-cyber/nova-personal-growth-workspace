@@ -14,7 +14,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const isZh = locale === "zh";
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-line bg-white px-5 py-6 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#E3E5EE] bg-[#F0F1F7] px-5 py-6 lg:flex lg:flex-col">
         <Link href="/" className="mb-10 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span>
           <span className="font-[Manrope] text-[17px] font-extrabold tracking-[-0.04em]">NOVA</span>
@@ -24,7 +24,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
           <NavItem href="/" active={active === "dashboard"} icon={<LayoutDashboard size={17} />} label={isZh ? "总览" : "Overview"} />
           {modules.slice(0, 4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} />)}
           <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A2A7AF]">{isZh ? "生活记录" : "Life log"}</p>
-          {modules.slice(4, 9).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} />)}
+          {modules.slice(4).map((item) => <NavItem key={item.slug} href={`/${item.slug}`} active={active === item.slug} icon={<item.icon size={17} />} label={isZh ? item.label : item.labelEn} />)}
         </nav>
         <div className="mt-auto space-y-1">
           <NavItem href="/settings" active={active === "settings"} icon={<Settings2 size={17} />} label={isZh ? "设置" : "Settings"} />
