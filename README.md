@@ -78,6 +78,12 @@ components/
 ├─ layout/AppShell.tsx      # 页面外壳、导航和语言切换
 └─ dashboard/Dashboard.tsx  # Dashboard 首页内容
 
+features/
+└─ today/                    # 今日计划：任务、统计和 Local Storage
+   ├─ TodayPlan.tsx
+   ├─ storage.ts
+   └─ types.ts
+
 lib/
 └─ modules.ts               # 模块定义和 Mock Data
 
