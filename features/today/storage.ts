@@ -13,16 +13,12 @@ export function loadTasks(): PlanTask[] {
 }
 
 export function saveTasks(tasks: PlanTask[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+  if (typeof window !== "undefined") window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
 }
 
 export function getTodayDate() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 export function createInitialTasks(date: string): PlanTask[] {
@@ -32,4 +28,3 @@ export function createInitialTasks(date: string): PlanTask[] {
     { id: crypto.randomUUID(), title: "晚间拉伸 20 分钟", date, time: "21:00", priority: "high", category: "健康", notes: "睡前放松身体。", completed: false },
   ];
 }
-
