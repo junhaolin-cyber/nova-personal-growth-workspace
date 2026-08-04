@@ -56,7 +56,7 @@ export function TodayPlan({ locale = "zh" }: { locale?: Locale }) {
   </div>;
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) { return <article className="flex min-h-[148px] items-center justify-center rounded-[20px] border border-line bg-white px-6 py-8 text-center shadow-card"><div><p className="text-sm font-medium text-muted">{label}</p><p className="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink">{value}</p></div></article>; }
+function StatCard({ label, value }: { label: string; value: string | number }) { return <article className="grid min-h-[148px] place-items-center rounded-[20px] border border-line bg-white px-6 py-8 text-center shadow-card"><div className="w-full text-center"><p className="text-sm font-medium text-muted">{label}</p><p className="mt-3 text-3xl font-extrabold tracking-[-0.04em] text-ink">{value}</p></div></article>; }
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) { return <button onClick={onClick} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${active ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{label}</button>; }
 
 function TaskRow({ task, locale, onToggle, onEdit, onDelete }: { task: PlanTask; locale: Locale; onToggle: (id: string) => void; onEdit: (task: PlanTask) => void; onDelete: (id: string) => void }) {
