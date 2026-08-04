@@ -84,7 +84,7 @@ export function TodayPlan({ locale = "zh" }: { locale?: Locale }) {
 }
 
 function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
-    return <article className="flex min-h-[124px] items-center justify-center gap-4 rounded-[20px] border border-line bg-white px-6 py-7 shadow-card"><div className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}>{icon}</div><div className="text-left"><p className="text-xs text-muted">{label}</p><p className="mt-2 text-2xl font-extrabold tracking-[-0.04em]">{value}</p></div></article>;
+    return <article className="flex min-h-[124px] items-center justify-center rounded-[20px] border border-line bg-white px-6 py-7 shadow-card"><div className="flex w-fit items-center gap-4"><div className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}>{icon}</div><div className="text-left"><p className="text-xs text-muted">{label}</p><p className="mt-2 text-2xl font-extrabold tracking-[-0.04em]">{value}</p></div></div></article>;
 }
 
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
