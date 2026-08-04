@@ -67,7 +67,7 @@ export function TodayPlan({ locale = "zh" }: { locale?: Locale }) {
       <button onClick={openCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white shadow-card transition hover:-translate-y-0.5"><Plus size={17} />{isZh ? "新增任务" : "Add task"}</button>
     </section>
 
-    <section className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="mb-8 grid w-full grid-cols-2 gap-3 xl:grid-cols-4">
       <StatCard icon={<ListTodo size={18} />} label={isZh ? "今日任务" : "Today's tasks"} value={todayTasks.length} tone="bg-[#E7E9FF] text-[#5E5CE6]" />
       <StatCard icon={<CheckCircle2 size={18} />} label={isZh ? "今日完成率" : "Completion rate"} value={`${completionRate}%`} tone="bg-[#DDEFE4] text-[#43845D]" />
       <StatCard icon={<Check size={18} />} label={isZh ? "已完成" : "Completed"} value={completedCount} tone="bg-[#E4EDF5] text-[#557B9C]" />
@@ -121,4 +121,3 @@ function formatLongDate(date: string, locale: string) {
 function formatShortDate(date: string, locale: Locale) {
   return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
 }
-
