@@ -52,13 +52,18 @@ function validSettings(value: unknown): NewsSettings {
 function validArray<T>(value: unknown): T[] { return Array.isArray(value) ? value as T[] : []; }
 
 export function loadNewsState(): NewsClientState {
-  const sources = validArray<NewsSource>(readJson(NEWS_STORAGE_KEYS.sources));
+  const persistedSources = validArray<NewsSource>(readJson(NEWS_STORAGE_KEYS.sources));
+  const persistedById = new Map(persistedSources.map((source) => [source.id, source]));
+  const sources = [
+    ...DEFAULT_NEWS_SOURCES.map((source) => persistedById.get(source.id) ?? source),
+    ...persistedSources.filter((source) => !DEFAULT_NEWS_SOURCES.some((defaultSource) => defaultSource.id === source.id)),
+  ];
   return {
     settings: validSettings(readJson(NEWS_STORAGE_KEYS.settings)),
     favorites: validArray<NewsSavedArticle>(readJson(NEWS_STORAGE_KEYS.favorites)),
     history: validArray<NewsHistoryItem>(readJson(NEWS_STORAGE_KEYS.history)),
     trackedEvents: validArray<NewsTrackedEvent>(readJson(NEWS_STORAGE_KEYS.trackedEvents)),
-    sources: sources.length ? sources : DEFAULT_NEWS_SOURCES,
+    sources,
   };
 }
 

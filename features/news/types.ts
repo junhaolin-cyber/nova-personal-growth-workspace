@@ -138,6 +138,7 @@ export type NewsCache = {
   articles: NewsArticle[];
   events: NewsEvent[];
   sourceStatuses: NewsSourceStatus[];
+  metrics?: NewsFeedMetrics;
 };
 
 export type NewsSourceStatus = {
@@ -146,6 +147,32 @@ export type NewsSourceStatus = {
   ok: boolean;
   message?: string;
   fetchedAt: string;
+  httpStatus?: number;
+  requestCount?: number;
+  cacheHit?: boolean;
+  retryCount?: number;
+  finalArticleCount?: number;
+};
+
+export type NewsRequestMetrics = {
+  requestCount: number;
+  httpStatusCodes: number[];
+  cacheHit: boolean;
+  retryCount: number;
+  finalArticleCount: number;
+};
+
+export type NewsFeedMetrics = {
+  requestId: string;
+  gdelt: NewsRequestMetrics;
+  rss: {
+    requestCount: number;
+    successCount: number;
+    finalArticleCount: number;
+  };
+  feedCacheHit: boolean;
+  requestDeduped: boolean;
+  finalArticleCount: number;
 };
 
 export type NewsClientState = {
@@ -162,6 +189,7 @@ export type NewsApiResponse = {
   sourceStatuses: NewsSourceStatus[];
   fetchedAt: string;
   fromCache?: boolean;
+  metrics?: NewsFeedMetrics;
   warning?: string;
 };
 

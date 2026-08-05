@@ -29,6 +29,7 @@ export function NewsPage() {
   const [mode, setMode] = React.useState<CollectionMode>("feed");
   const [selectedArticleId, setSelectedArticleId] = React.useState<string>();
   const [warning, setWarning] = React.useState<string>();
+  const refreshRequestRef = React.useRef<{ key: string; promise: Promise<void> } | null>(null);
 
   React.useEffect(() => {
     const nextState = loadNewsState();
@@ -48,29 +49,39 @@ export function NewsPage() {
 
   const refresh = React.useCallback(async () => {
     if (!state) return;
-    setLoading(true);
-    setWarning(undefined);
-    try {
-      const response = await fetchNews(activeCategory, submittedQuery, state.sources.filter((source) => source.isEnabled).map((source) => source.id), state.sources);
-      const nextArticles = applyPersistedState(sortArticles(response.articles), state);
-      setArticles(nextArticles);
-      setEvents(response.events);
-      setSourceStatuses(response.sourceStatuses);
-      setFetchedAt(response.fetchedAt);
-      setWarning(response.warning);
-      saveNewsCache({ fetchedAt: response.fetchedAt, articles: nextArticles, events: response.events, sourceStatuses: response.sourceStatuses });
-    } catch (error) {
-      const cache = loadNewsCache();
-      if (cache?.articles.length) {
-        setArticles(applyPersistedState(cache.articles, state));
-        setEvents(cache.events);
-        setSourceStatuses(cache.sourceStatuses);
-        setFetchedAt(cache.fetchedAt);
-        setWarning("当前展示的是最近一次成功更新的数据。新闻服务暂时不可用，请稍后重试。");
-      } else {
-        setWarning(error instanceof Error ? error.message : "新闻服务暂时不可用，请稍后重试。");
-      }
-    } finally { setLoading(false); }
+    const requestKey = `${activeCategory}|${submittedQuery}|${state.sources.filter((source) => source.isEnabled).map((source) => source.id).sort().join(",")}`;
+    const existing = refreshRequestRef.current;
+    if (existing?.key === requestKey) return existing.promise;
+
+    const promise = (async () => {
+      setLoading(true);
+      setWarning(undefined);
+      try {
+        const response = await fetchNews(activeCategory, submittedQuery, state.sources.filter((source) => source.isEnabled).map((source) => source.id), state.sources);
+        const nextArticles = applyPersistedState(sortArticles(response.articles), state);
+        setArticles(nextArticles);
+        setEvents(response.events);
+        setSourceStatuses(response.sourceStatuses);
+        setFetchedAt(response.fetchedAt);
+        setWarning(response.warning);
+        saveNewsCache({ fetchedAt: response.fetchedAt, articles: nextArticles, events: response.events, sourceStatuses: response.sourceStatuses, metrics: response.metrics });
+      } catch (error) {
+        const cache = loadNewsCache();
+        if (cache?.articles.length) {
+          setArticles(applyPersistedState(cache.articles, state));
+          setEvents(cache.events);
+          setSourceStatuses(cache.sourceStatuses);
+          setFetchedAt(cache.fetchedAt);
+          setWarning("当前展示的是最近一次成功更新的数据。新闻服务暂时不可用，请稍后重试。");
+        } else {
+          setWarning(error instanceof Error ? error.message : "新闻服务暂时不可用，请稍后重试。");
+        }
+      } finally { setLoading(false); }
+    })();
+    refreshRequestRef.current = { key: requestKey, promise };
+    try { await promise; } finally {
+      if (refreshRequestRef.current?.promise === promise) refreshRequestRef.current = null;
+    }
   }, [activeCategory, applyPersistedState, state, submittedQuery]);
 
   React.useEffect(() => { if (hydrated && state) void refresh(); }, [hydrated, state, refresh]);

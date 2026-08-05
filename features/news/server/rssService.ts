@@ -26,7 +26,7 @@ export async function fetchRssArticles(source: NewsSource): Promise<NewsArticle[
   const timeout = setTimeout(() => controller.abort(), 9000);
   try {
     const response = await fetch(source.rssUrl, { signal: controller.signal, cache: "no-store", headers: { Accept: "application/rss+xml, application/xml, text/xml" } });
-    if (!response.ok) throw new Error(`RSS ${response.status}`);
+    if (!response.ok) throw Object.assign(new Error(`RSS 请求失败（${response.status}）`), { httpStatus: response.status });
     const xml = await response.text();
     const fetchedAt = new Date().toISOString();
     return rssItems(xml).map((block) => normalizeArticle({
