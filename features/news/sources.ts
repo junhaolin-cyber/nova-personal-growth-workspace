@@ -98,6 +98,22 @@ export const DEFAULT_NEWS_SOURCES: NewsSource[] = [
     createdAt: now,
     updatedAt: now,
   },
+  {
+    id: "cns-culture-rss",
+    name: "中新网文娱 RSS",
+    domain: "chinanews.com.cn",
+    sourceType: "official-rss",
+    language: "中文",
+    countryOrRegion: "中国 / 全球",
+    categories: ["娱乐", "文化"],
+    rssUrl: "https://www.chinanews.com.cn/rss/culture.xml",
+    homepageUrl: "https://www.chinanews.com/rss/index.shtml",
+    isEnabled: true,
+    reliabilityNote: "中新网公开 RSS，覆盖文娱新闻。",
+    usageNote: "按中新网 RSS 页面授权说明使用，不保存完整正文。",
+    createdAt: now,
+    updatedAt: now,
+  },
 ];
 
 export const CATEGORY_QUERIES: Record<NewsCategory, string> = {
