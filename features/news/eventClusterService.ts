@@ -46,6 +46,33 @@ export function clusterNewsEvents(articles: NewsArticle[]): NewsEvent[] {
   }).sort((a, b) => new Date(b.lastUpdatedAt).getTime() - new Date(a.lastUpdatedAt).getTime());
 }
 
+const importanceScore: Record<NewsImportance, number> = {
+  一般: 0,
+  重要: 1,
+  重大: 2,
+};
+
+const statusScore: Record<NewsEventStatus, number> = {
+  刚刚发生: 3,
+  出现新进展: 3,
+  持续发展: 2,
+  热度下降: 1,
+  已基本结束: 0,
+};
+
+export function rankNewsEvents(events: NewsEvent[]): NewsEvent[] {
+  return [...events].sort((a, b) => {
+    const score = (event: NewsEvent) =>
+      event.sourceIds.length * 100 +
+      event.articleIds.length * 10 +
+      importanceScore[event.importance] * 3 +
+      statusScore[event.status];
+    const scoreDifference = score(b) - score(a);
+    if (scoreDifference !== 0) return scoreDifference;
+    return new Date(b.lastUpdatedAt).getTime() - new Date(a.lastUpdatedAt).getTime();
+  });
+}
+
 export function trackedEventFromEvent(event: NewsEvent) {
   return {
     eventId: event.id,

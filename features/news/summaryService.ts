@@ -7,7 +7,7 @@ export function createSourceOnlySummary(articles: NewsArticle[]): NewsSummary {
   return {
     generatedAt: nowIso(),
     generatedBy: "source-only",
-    whatHappened: first?.description ?? "当前来源只提供标题，暂无可用于摘要的公开描述。",
+    whatHappened: truncateText(first?.description, 220) ?? "当前来源只提供标题，暂无可用于摘要的公开描述。",
     whyItMatters: "当前阶段未启用 AI 判断，仅保留来源提供的信息，不对影响范围作未经证实的推断。",
     confirmedFacts: articles.length > 1 ? ["多个公开来源出现相近报道。", "标题、来源、发布时间和原文链接均保留。"] : ["当前只有一个公开来源，无法进行跨来源确认。"],
     currentProgress: first ? `最近一条报道发布时间为 ${new Date(first.publishedAt).toLocaleString("zh-CN")}。` : "暂无进展信息。",

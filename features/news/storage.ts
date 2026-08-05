@@ -15,7 +15,7 @@ const defaultSettings: NewsSettings = {
   hiddenCategories: [],
   defaultLanguage: "all",
   countryOrRegion: "全部",
-  pageSize: 12,
+  pageSize: 20,
   showImages: true,
   autoSummary: true,
   showSourceComparison: true,

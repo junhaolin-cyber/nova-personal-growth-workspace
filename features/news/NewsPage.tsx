@@ -29,6 +29,7 @@ export function NewsPage() {
   const [mode, setMode] = React.useState<CollectionMode>("feed");
   const [selectedArticleId, setSelectedArticleId] = React.useState<string>();
   const [warning, setWarning] = React.useState<string>();
+  const [visibleArticleCount, setVisibleArticleCount] = React.useState(20);
   const refreshRequestRef = React.useRef<{ key: string; promise: Promise<void> } | null>(null);
 
   React.useEffect(() => {
@@ -86,6 +87,10 @@ export function NewsPage() {
 
   React.useEffect(() => { if (hydrated && state) void refresh(); }, [hydrated, state, refresh]);
 
+  React.useEffect(() => {
+    setVisibleArticleCount(Math.max(20, state?.settings.pageSize ?? 20));
+  }, [activeCategory, state?.settings.pageSize, submittedQuery]);
+
   function updateArticle(articleId: string, update: (article: NewsArticle) => NewsArticle) {
     setArticles((current) => current.map((article) => article.id === articleId ? update(article) : article));
   }
@@ -133,13 +138,14 @@ export function NewsPage() {
   const unreadCount = articles.filter((article) => !article.isRead).length;
   const selectedArticle = selectedArticleId ? articles.find((article) => article.id === selectedArticleId) : undefined;
   const statusMessage = sourceStatuses.length && sourceStatuses.every((status) => status.ok) ? "来源正常" : sourceStatuses.length ? "部分来源异常" : "等待来源返回";
+  const pageSize = Math.max(20, state.settings.pageSize);
 
   return <div className="mx-auto max-w-[1400px] space-y-8">
     <NewsOverview articleCount={todayCount} eventCount={events.length} unreadCount={unreadCount} favoriteCount={state.favorites.length} trackedCount={state.trackedEvents.length} fetchedAt={fetchedAt} loading={loading} onRefresh={() => void refresh()} />
     {warning ? <div className="flex items-start gap-3 rounded-2xl border border-[#F2D6AD] bg-[#FFF8EC] px-4 py-3 text-sm text-[#8A6C49]"><AlertTriangle size={17} className="mt-0.5 shrink-0" /><span>{warning}</span></div> : null}
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]"><TopStories events={events} onOpen={setSelectedArticleId} /><TrendingTopics events={events} /></div>
     <section className="rounded-3xl border border-line bg-white p-6 shadow-sm"><div className="flex flex-wrap items-center gap-3"><NewsSearch query={query} onQuery={setQuery} onSubmit={() => { setSubmittedQuery(query.trim()); setMode("feed"); }} /><div className="flex items-center gap-2 rounded-xl bg-canvas px-3 py-2 text-xs text-muted"><Filter size={14} /><span>{statusMessage}</span></div></div><div className="mt-5"><NewsCategoryTabs categories={visibleCategories} active={activeCategory} onChange={(category) => { setActiveCategory(category); setMode("feed"); }} /></div><div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4"><ActionTab active={mode === "feed"} icon={<Newspaper size={14} />} label="新闻列表" onClick={() => setMode("feed")} /><ActionTab active={mode === "favorites"} icon={<Library size={14} />} label="我的收藏" onClick={() => setMode("favorites")} /><ActionTab active={mode === "history"} icon={<BookOpen size={14} />} label="阅读历史" onClick={() => setMode("history")} /><ActionTab active={mode === "tracking"} icon={<MessageCircleMore size={14} />} label="事件追踪" onClick={() => setMode("tracking")} /><ActionTab active={mode === "sources"} icon={<Search size={14} />} label="来源管理" onClick={() => setMode("sources")} /></div></section>
-    {mode === "feed" ? <section className="space-y-4">{displayedArticles.slice(0, state.settings.pageSize).map((article) => <NewsCard key={article.id} article={article} showImage={state.settings.showImages} onFavorite={() => toggleFavorite(article)} onRead={() => toggleRead(article)} onTrack={() => trackEvent(article)} onDetails={() => setSelectedArticleId(article.id)} />)}{!displayedArticles.length ? <div className="rounded-3xl border border-dashed border-line bg-white p-12 text-center text-sm text-muted">没有找到符合条件的新闻。请尝试更换分类或关键词。</div> : null}</section> : null}
+    {mode === "feed" ? <section className="space-y-4">{displayedArticles.slice(0, visibleArticleCount).map((article) => <NewsCard key={article.id} article={article} showImage={state.settings.showImages} onFavorite={() => toggleFavorite(article)} onRead={() => toggleRead(article)} onTrack={() => trackEvent(article)} onDetails={() => setSelectedArticleId(article.id)} />)}{displayedArticles.length > visibleArticleCount ? <button type="button" onClick={() => setVisibleArticleCount((count) => count + pageSize)} className="mx-auto block rounded-xl border border-line bg-white px-5 py-3 text-sm font-bold text-ink shadow-sm transition hover:border-[#BFC4F4] hover:bg-canvas">继续加载</button> : null}{!displayedArticles.length ? <div className="rounded-3xl border border-dashed border-line bg-white p-12 text-center text-sm text-muted"><p>今日暂无该分类新闻，建议查看推荐或其他分类。</p><p className="mt-2 text-xs">当前已启用的数据源暂未返回该分类内容。</p></div> : null}</section> : null}
     {mode === "favorites" || mode === "history" || mode === "tracking" ? <NewsCollections mode={mode} articles={favoriteArticles} history={state.history} trackedEvents={state.trackedEvents} onOpen={setSelectedArticleId} onRemoveHistory={(articleId) => setState({ ...state, history: state.history.filter((item) => item.articleId !== articleId) })} onUntrack={(eventId) => setState({ ...state, trackedEvents: state.trackedEvents.filter((item) => item.eventId !== eventId) })} /> : null}
     {mode === "sources" ? <NewsSourceManager sources={state.sources} onToggle={toggleSource} onAddRss={(url) => { if (!isSafeHttpUrl(url)) return "链接格式不安全，只允许公开的 http 或 https 地址。"; if (state.sources.some((source) => source.rssUrl === url)) return "这个 RSS 地址已经添加。"; const timestamp = new Date().toISOString(); setState({ ...state, sources: [...state.sources, { id: `user-rss-${Date.now()}`, name: new URL(url).hostname, domain: new URL(url).hostname, sourceType: "user-rss", language: "未指定", countryOrRegion: "未指定", categories: ["推荐", "其他"], rssUrl: url, isEnabled: true, reliabilityNote: "用户自行添加的公开 RSS，来源质量和授权范围需要自行确认。", createdAt: timestamp, updatedAt: timestamp }] }); return undefined; }} /> : null}
     <section className="grid gap-5 md:grid-cols-3"><div className="rounded-2xl border border-line bg-white p-5"><p className="text-sm font-extrabold">舆论观察</p><p className="mt-3 text-sm leading-6 text-muted">当前仅根据公开新闻来源整理争议焦点，不代表完整社会舆论，也不生成网友比例、情绪占比或全网热度。</p></div><div className="rounded-2xl border border-line bg-white p-5"><p className="text-sm font-extrabold">数据来源</p><p className="mt-3 text-sm leading-6 text-muted">{sourceStatuses.filter((status) => status.ok).map((status) => status.sourceName).join("、") || "暂无成功返回的来源"}</p></div><div className="rounded-2xl border border-line bg-white p-5"><p className="text-sm font-extrabold">阅读提醒</p><p className="mt-3 text-sm leading-6 text-muted">新闻摘要只基于公开标题和来源摘要，政治、冲突及争议事件请打开原文核实。</p></div></section>
