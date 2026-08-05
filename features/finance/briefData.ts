@@ -1,0 +1,12 @@
+import type { FinanceBrief } from "./types";
+
+export const financeBriefs: FinanceBrief[] = [
+  { id: "brief-cashflow", title: "为什么大家总在讨论现金流", category: "预算与现金流", tag: "财经原理", summary: "现金流决定短期支付是否顺畅，是理解个人财务压力的重要入口。", background: "本内容用一个家庭的月度收支变化作为财经教育示例，帮助理解收入时间与付款时间的错位。", whyItMatters: "很多财务压力不是因为没有收入，而是因为进账和付款时间没有安排好。", concepts: ["现金流", "应急金", "预算"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-rate", title: "利率变化会影响哪些日常选择", category: "债券与固收", tag: "宏观背景", summary: "利率会通过借款、储蓄和部分资产估值影响个人财务讨论。", background: "本内容以利率变化的传导路径为例，不对应某一个具体市场事件。", whyItMatters: "理解影响路径，比记住某次变化更有助于读懂财经信息。", concepts: ["利率", "借款成本", "机会成本"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-inflation", title: "物价变化与购买力", category: "基础概念", tag: "生活财经", summary: "长期目标需要考虑未来支出可能发生变化，而不是只看今天的金额。", background: "本内容通过生活支出场景解释通货膨胀和购买力的关系。", whyItMatters: "它能帮助你理解为什么长期目标需要定期复盘。", concepts: ["通胀", "购买力", "长期目标"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-index", title: "指数化思路如何帮助理解市场", category: "指数与ETF", tag: "投资教育", summary: "指数用公开规则描述一组资产的表现，是观察市场结构的学习工具。", background: "本内容介绍指数成分和权重的基础概念，不对应任何具体指数或产品。", whyItMatters: "先理解规则和范围，才能避免只看名称做判断。", concepts: ["指数", "成分", "权重"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-security", title: "为什么金融安全需要反复提醒", category: "金融安全", tag: "风险提醒", summary: "高收益承诺、催促转账和索要验证码，都是需要停下来核验的信号。", background: "本内容整理常见风险信号，用于练习识别信息安全问题。", whyItMatters: "金融知识不仅是看懂收益，也包括保护账户、身份和数据。", concepts: ["诈骗信号", "信息核验", "隐私"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-retirement", title: "长期规划为什么需要多个情景", category: "退休与长期", tag: "长期规划", summary: "收入、支出和生活阶段都会变化，单一数字很难代表长期现实。", background: "本内容以情景分析方法说明长期目标如何留出弹性。", whyItMatters: "把不确定性放进计划，往往比追求精确预测更稳妥。", concepts: ["情景分析", "退休", "弹性"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-cost", title: "小费用为什么值得被看见", category: "基础概念", tag: "成本意识", summary: "费率、交易成本和税费可能在长期中累积，阅读口径很重要。", background: "本内容用费用分类来练习阅读财经产品说明，不对应任何具体产品。", whyItMatters: "知道成本在哪里，能让比较更加完整。", concepts: ["费用", "税费", "净收益"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+  { id: "brief-behavior", title: "情绪如何影响财务判断", category: "风险管理", tag: "行为金融", summary: "损失厌恶、从众和过度自信都可能让判断偏离原本的规则。", background: "本内容用日常决策场景介绍行为偏差，不对任何个人或市场作判断。", whyItMatters: "先识别自己的决策环境，才能更好地复盘。", concepts: ["损失厌恶", "从众", "复盘"], riskReminder: "本内容为财经原理学习示例，不代表实时新闻。", sourceNote: "本地学习示例，非实时资讯。" },
+];

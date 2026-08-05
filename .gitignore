@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# local environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs and local tooling
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+
+# editor / OS files
+.vscode/
+.idea/
+*.swp
+
+# temporary publishing metadata used only by local tooling
+.git-publish/

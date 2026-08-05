@@ -1,0 +1,5 @@
+import { Clock3 } from "lucide-react";
+import type { BookkeepingAccount, BookkeepingCategory, BookkeepingRecord } from "../types";
+import { RecordList } from "./RecordList";
+
+export function RecentRecords({ records, categories, accounts, onEdit, onDelete }: { records: BookkeepingRecord[]; categories: BookkeepingCategory[]; accounts: BookkeepingAccount[]; onEdit: (record: BookkeepingRecord) => void; onDelete: (id: string) => void }) { return <section className="rounded-[28px] border border-line bg-white p-6 shadow-card sm:p-8"><div className="flex items-center justify-between gap-3"><div><p className="flex items-center gap-2 text-sm font-bold text-accent"><Clock3 size={16} />最近账单</p><h2 className="mt-2 text-xl font-extrabold">刚刚发生的收支</h2></div><span className="text-xs text-muted">最近 6 笔</span></div><div className="mt-5"><RecordList records={records.slice(0, 6)} categories={categories} accounts={accounts} emptyText="还没有账单，先记录第一笔吧。" onEdit={onEdit} onDelete={onDelete} /></div></section>; }
