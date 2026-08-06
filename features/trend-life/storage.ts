@@ -1,7 +1,7 @@
 import type { TrendLifeState } from "./types";
 
 const STORAGE_KEY = "nova-trend-life:v1";
-const emptyState: TrendLifeState = { favoriteIds: [], favoriteBrandIds: [], historyIds: [], historyBrandIds: [] };
+const emptyState: TrendLifeState = { favoriteIds: [], favoriteBrandIds: [], favoriteThemeIds: [], historyIds: [], historyBrandIds: [] };
 
 function cleanIds(value: unknown): string[] {
   return Array.isArray(value) ? [...new Set(value.filter((item): item is string => typeof item === "string"))] : [];
@@ -16,6 +16,7 @@ export function readTrendLifeState(): TrendLifeState {
     return {
       favoriteIds: cleanIds(record.favoriteIds),
       favoriteBrandIds: cleanIds(record.favoriteBrandIds),
+      favoriteThemeIds: cleanIds(record.favoriteThemeIds),
       historyIds: cleanIds(record.historyIds),
       historyBrandIds: cleanIds(record.historyBrandIds),
     };

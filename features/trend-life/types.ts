@@ -13,6 +13,17 @@ export type TrendItem = {
   brand?: string;
   tone: string;
   label: string;
+  recommendation?: string;
+  featuredInOutfit?: boolean;
+};
+
+export type TrendOutfitTheme = {
+  id: string;
+  title: string;
+  reason: string;
+  suitableFor: string;
+  tags: string[];
+  tone: string;
 };
 
 export type TrendBrand = {
@@ -27,6 +38,7 @@ export type TrendBrand = {
 export type TrendLifeState = {
   favoriteIds: string[];
   favoriteBrandIds: string[];
+  favoriteThemeIds: string[];
   historyIds: string[];
   historyBrandIds: string[];
 };
