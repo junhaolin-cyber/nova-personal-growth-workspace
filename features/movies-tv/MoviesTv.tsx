@@ -59,7 +59,7 @@ export function MoviesTv() {
     setLoadingFeed(true);
     fetch(`/api/movies-tv/discover?scope=${view}`, { cache: "no-store" })
       .then(async (response) => response.ok ? await response.json() as { items?: MediaItem[]; warning?: string } : { items: [], warning: "影视数据服务暂时不可用。" })
-      .then((result) => { if (!cancelled) { setCatalog((current) => mergeItems(current, result.items ?? [])); setMessage(result.warning ?? ""); setSearchResults(null); } })
+      .then((result) => { if (!cancelled) { setCatalog((current) => mergeItems(result.items ?? [], current)); setMessage(result.warning ?? ""); setSearchResults(null); } })
       .catch(() => { if (!cancelled) setMessage("影视数据服务暂时不可用，当前保留已有公开片单。"); })
       .finally(() => { if (!cancelled) setLoadingFeed(false); });
     return () => { cancelled = true; };

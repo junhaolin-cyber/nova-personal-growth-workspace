@@ -31,6 +31,7 @@ type TmdbListResponse = { results?: unknown };
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_URL = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP_URL = "https://image.tmdb.org/t/p/w780";
+const TMDB_REQUEST_TIMEOUT = 10_000;
 
 const genreNames: Record<number, string> = {
   16: "动画", 18: "剧情", 35: "喜剧", 36: "历史", 53: "惊悚", 80: "犯罪", 99: "纪录片", 10749: "爱情", 10751: "家庭", 10759: "动作冒险", 10764: "真人秀", 10767: "脱口秀", 10765: "科幻与奇幻", 10768: "战争与政治",
@@ -151,9 +152,13 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
   if (!token) return null;
   const url = new URL(`${TMDB_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
-  const response = await fetch(url, { headers: { accept: "application/json", Authorization: `Bearer ${token}` }, next: { revalidate: 900 } });
-  if (!response.ok) return null;
-  return await response.json() as T;
+  try {
+    const response = await fetch(url, { headers: { accept: "application/json", Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(TMDB_REQUEST_TIMEOUT), next: { revalidate: 900 } });
+    if (!response.ok) return null;
+    return await response.json() as T;
+  } catch {
+    return null;
+  }
 }
 
 function scopeQuery(scope: string): { path: string; params: Record<string, string>; category?: MediaCategory } {

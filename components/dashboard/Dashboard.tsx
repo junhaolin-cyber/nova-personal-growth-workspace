@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, CalendarDays, Check, Clock3, MoreHorizontal, Quote, SunMedium } from "lucide-react";
 import { modules } from "@/lib/modules";
@@ -7,7 +8,13 @@ import { modules } from "@/lib/modules";
 const tasks = [{ label: "完成英语听力练习", labelEn: "Complete listening practice", time: "09:00", done: true }, { label: "阅读《置身事内》", labelEn: "Read a book", time: "14:30", done: false }, { label: "晚间拉伸 20 分钟", labelEn: "Stretch for 20 minutes", time: "21:00", done: false }];
 
 export function Dashboard({ locale = "zh" }: { locale?: "zh" | "en" }) {
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date(0));
+  useEffect(() => {
+    const updateTime = () => setNow(new Date());
+    updateTime();
+    const timer = window.setInterval(updateTime, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const isZh = locale === "zh";
   const dateLabel = new Intl.DateTimeFormat(isZh ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "long", year: "numeric" }).format(now);
   return <div className="mx-auto max-w-[1440px]">
