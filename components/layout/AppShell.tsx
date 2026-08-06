@@ -18,6 +18,8 @@ import { MoviesTv } from "@/features/movies-tv/MoviesTv";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useAuthAccount } from "@/features/auth/useAuthAccount";
 import { useSyncStatus } from "@/features/sync/useSyncStatus";
+import { FirstBatchMigrationPrompt } from "@/features/migration/firstBatch/FirstBatchMigrationPrompt";
+import { useFirstBatchMigration } from "@/features/migration/firstBatch/useFirstBatchMigration";
 import { activeIconShapes, modules } from "@/lib/modules";
 
 const activeModuleStyles: Record<string, string> = {
@@ -39,6 +41,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const [locale, setLocale] = React.useState<"zh" | "en">("zh");
   const auth = useAuthAccount();
   const sync = useSyncStatus(auth.account);
+  const firstBatchMigration = useFirstBatchMigration(auth.account);
   const active = activeModule ?? (pathname === "/" ? "dashboard" : pathname.slice(1));
   const isZh = locale === "zh";
   const accountName = auth.account?.profile?.display_name || (auth.account?.user.user_metadata.display_name as string | undefined) || auth.account?.user.email?.split("@")[0] || "NOVA 用户";
@@ -77,6 +80,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
         </header>
         <main className="h-[calc(100vh-76px)] min-h-[620px] overflow-y-auto overscroll-y-auto px-5 py-8 pb-20 sm:px-8 lg:px-12 lg:py-10">{active === "dashboard" ? <Dashboard locale={locale} /> : active === "today" ? <TodayPlan locale={locale} /> : active === "english" ? <EnglishLearning /> : active === "speaking" ? <Speaking /> : active === "finance" ? <FinanceLearning /> : active === "ledger" ? <Bookkeeping /> : active === "food" ? <FoodDiscovery /> : active === "exercise" ? <ExerciseTracker /> : active === "news" ? <NewsPage /> : active === "trend-life" ? <TrendLife /> : active === "movies-tv" ? <MoviesTv /> : <ModulePlaceholder slug={active} locale={locale} />}</main>
       </div>
+      <FirstBatchMigrationPrompt controller={firstBatchMigration} />
     </div>
   );
 }
