@@ -1,0 +1,9 @@
+<svg width="800" height="1100" viewBox="0 0 800 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="poster" x1="0" y1="0" x2="800" y2="1100" gradientUnits="userSpaceOnUse"><stop stop-color="#E9E7FA"/><stop offset="0.55" stop-color="#F8F5FF"/><stop offset="1" stop-color="#E9F1F4"/></linearGradient></defs>
+  <rect width="800" height="1100" rx="36" fill="url(#poster)"/>
+  <circle cx="585" cy="230" r="180" fill="#B9A8ED" fill-opacity="0.35"/><circle cx="170" cy="920" r="220" fill="#A8CBD0" fill-opacity="0.3"/>
+  <path d="M0 780C170 690 300 730 430 850C555 966 670 985 800 920V1100H0V780Z" fill="#FFFFFF" fill-opacity="0.5"/>
+  <text x="68" y="128" fill="#7169B1" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="5">NOVA / MEDIA</text>
+  <text x="68" y="930" fill="#1D1D22" font-family="Arial, sans-serif" font-size="62" font-weight="800">影视资料</text>
+  <text x="72" y="982" fill="#557B9C" font-family="Arial, sans-serif" font-size="25" font-weight="600">公开资料封面占位</text>
+</svg>

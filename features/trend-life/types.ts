@@ -8,6 +8,7 @@ export type TrendItem = {
   summary: string;
   sourceName: string;
   sourceUrl?: string;
+  coverUrl?: string;
   publishedAt: string;
   tags: string[];
   brand?: string;

@@ -1,0 +1,13 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="800" gradientUnits="userSpaceOnUse"><stop stop-color="#EEE8FA"/><stop offset="0.52" stop-color="#F8F4FF"/><stop offset="1" stop-color="#E9F1F4"/></linearGradient>
+    <linearGradient id="orb" x1="220" y1="120" x2="980" y2="680" gradientUnits="userSpaceOnUse"><stop stop-color="#B9A8ED" stop-opacity="0.75"/><stop offset="1" stop-color="#A8CBD0" stop-opacity="0.25"/></linearGradient>
+  </defs>
+  <rect width="1200" height="800" rx="40" fill="url(#background)"/>
+  <circle cx="925" cy="175" r="230" fill="url(#orb)"/>
+  <circle cx="215" cy="665" r="270" fill="#F4DCD4" fill-opacity="0.5"/>
+  <path d="M0 590C194 510 302 552 455 650C604 745 780 780 1200 615V800H0V590Z" fill="#FFFFFF" fill-opacity="0.42"/>
+  <text x="88" y="116" fill="#7169B1" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="4">NOVA / OPEN CONTENT</text>
+  <text x="88" y="640" fill="#1D1D22" font-family="Arial, sans-serif" font-size="58" font-weight="800">潮流生活</text>
+  <text x="92" y="690" fill="#7169B1" font-family="Arial, sans-serif" font-size="24" font-weight="600">公开资讯 · 穿搭灵感 · 官方视频</text>
+</svg>
