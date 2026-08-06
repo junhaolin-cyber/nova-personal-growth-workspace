@@ -28,6 +28,7 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   const [busy, setBusy] = React.useState(false);
   const [panelError, setPanelError] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState({ display_name: "", language: "zh-CN", timezone: "Asia/Shanghai" });
+  const userMenuButtonRef = React.useRef<HTMLButtonElement>(null);
 
   if (isLoading) return <div className="hidden h-10 w-28 animate-pulse rounded-xl bg-white/70 sm:block" aria-label="正在读取账号" />;
   if (!account) return <Link href="/auth?mode=login" className="inline-flex items-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">登录账号</Link>;
@@ -45,6 +46,11 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
     }
     if (nextPanel === "devices") await loadDevices();
   };
+
+  const closePanel = React.useCallback(() => {
+    setPanel(null);
+    window.setTimeout(() => userMenuButtonRef.current?.focus(), 0);
+  }, []);
 
   const handleSaveProfile = async () => {
     if (busy) return;
@@ -71,9 +77,9 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   };
 
   return <div className="relative">
-    <button type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-xl border border-line bg-white px-2 py-1.5 text-left transition hover:border-accent sm:px-2.5" aria-expanded={open} aria-label="打开用户菜单"><span className="grid size-8 place-items-center rounded-full bg-[#F0E8DD] text-xs font-bold text-[#8A6C49]">{initial}</span><span className="hidden max-w-[120px] sm:block"><span className="block truncate text-xs font-bold">{displayName}</span><span className="block max-w-[120px] truncate text-[10px] text-muted">{email}</span></span><ChevronDown size={14} className={`text-muted transition ${open ? "rotate-180" : ""}`} /></button>
+    <button ref={userMenuButtonRef} type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-xl border border-line bg-white px-2 py-1.5 text-left transition hover:border-accent sm:px-2.5" aria-expanded={open} aria-label="打开用户菜单"><span className="grid size-8 place-items-center rounded-full bg-[#F0E8DD] text-xs font-bold text-[#8A6C49]">{initial}</span><span className="hidden max-w-[120px] sm:block"><span className="block truncate text-xs font-bold">{displayName}</span><span className="block max-w-[120px] truncate text-[10px] text-muted">{email}</span></span><ChevronDown size={14} className={`text-muted transition ${open ? "rotate-180" : ""}`} /></button>
     {open ? <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-line bg-white p-2 shadow-xl"><div className="border-b border-line px-3 pb-3 pt-2"><p className="truncate text-sm font-bold">{displayName}</p><p className="mt-1 truncate text-xs text-muted">{email}</p></div><div className="py-2"><MenuButton icon={<UserRound size={16} />} label="我的资料" onClick={() => void openPanel("profile")} /><MenuButton icon={<Monitor size={16} />} label="我的设备" onClick={() => void openPanel("devices")} /><MenuButton icon={<Cloud size={16} />} label="同步状态" onClick={() => void openPanel("sync")} /><Link href="/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"><Settings2 size={16} />设置</Link></div><div className="border-t border-line pt-2"><button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#B26F3C] hover:bg-[#FFF8F2]"><LogOut size={16} />退出登录</button></div>{error ? <p className="px-3 pb-1 pt-2 text-xs text-[#B26F3C]">{error}</p> : null}</div> : null}
-    {panel ? <PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} sync={sync} onClose={() => setPanel(null)} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} /> : null}
+    {panel ? <PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} sync={sync} onClose={closePanel} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} /> : null}
   </div>;
 }
 
@@ -82,8 +88,21 @@ function MenuButton({ icon, label, onClick }: { icon: React.ReactNode; label: st
 }
 
 function PanelDialog({ panel, displayName, email, draft, devices, currentDeviceId, busy, error, sync, onClose, onDraftChange, onSave }: { panel: Exclude<Panel, null>; displayName: string; email: string; draft: { display_name: string; language: string; timezone: string }; devices: DeviceRecord[]; currentDeviceId: string | null; busy: boolean; error: string | null; sync: SyncStatusController; onClose: () => void; onDraftChange: React.Dispatch<React.SetStateAction<{ display_name: string; language: string; timezone: string }>>; onSave: () => void }) {
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   const title = panel === "profile" ? "我的资料" : panel === "devices" ? "我的设备" : "同步状态";
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-5 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}><div className="max-h-[min(720px,calc(100vh-4rem))] w-full max-w-lg overflow-y-auto rounded-[28px] border border-line bg-white p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-accent">账号中心</p><h2 className="mt-2 text-2xl font-extrabold">{title}</h2></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl text-muted hover:bg-canvas hover:text-ink" aria-label="关闭"><X size={18} /></button></div>{panel === "profile" ? <ProfilePanel displayName={displayName} email={email} draft={draft} busy={busy} error={error} onDraftChange={onDraftChange} onSave={onSave} /> : panel === "devices" ? <DevicesPanel devices={devices} currentDeviceId={currentDeviceId} error={error} /> : <SyncPanel sync={sync} />}</div></div>;
+  React.useEffect(() => {
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-5 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="max-h-[min(720px,calc(100vh-4rem))] w-full max-w-lg overflow-y-auto rounded-[28px] border border-line bg-white p-6 shadow-2xl sm:p-8" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-accent">账号中心</p><h2 className="mt-2 text-2xl font-extrabold">{title}</h2></div><button ref={closeButtonRef} type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl text-muted hover:bg-canvas hover:text-ink" aria-label="关闭"><X size={18} /></button></div>{panel === "profile" ? <ProfilePanel displayName={displayName} email={email} draft={draft} busy={busy} error={error} onDraftChange={onDraftChange} onSave={onSave} /> : panel === "devices" ? <DevicesPanel devices={devices} currentDeviceId={currentDeviceId} error={error} /> : <SyncPanel sync={sync} />}</div></div>;
 }
 
 function ProfilePanel({ displayName, email, draft, busy, error, onDraftChange, onSave }: { displayName: string; email: string; draft: { display_name: string; language: string; timezone: string }; busy: boolean; error: string | null; onDraftChange: React.Dispatch<React.SetStateAction<{ display_name: string; language: string; timezone: string }>>; onSave: () => void }) {
