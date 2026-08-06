@@ -30,6 +30,7 @@ type TmdbListResponse = { results?: unknown };
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_URL = "https://image.tmdb.org/t/p/w500";
+const TMDB_BACKDROP_URL = "https://image.tmdb.org/t/p/w780";
 
 const genreNames: Record<number, string> = {
   16: "动画", 18: "剧情", 35: "喜剧", 36: "历史", 53: "惊悚", 80: "犯罪", 99: "纪录片", 10749: "爱情", 10751: "家庭", 10759: "动作冒险", 10764: "真人秀", 10767: "脱口秀", 10765: "科幻与奇幻", 10768: "战争与政治",
@@ -118,6 +119,7 @@ export function mapTmdbMedia(payload: TmdbMedia, categoryOverride?: MediaCategor
   const mediaType = getMediaType(payload.media_type);
   const releaseDate = asString(payload.release_date) ?? asString(payload.first_air_date);
   const posterPath = asString(payload.poster_path);
+  const backdropPath = asString(payload.backdrop_path);
   const rating = asNumber(payload.vote_average);
   return {
     id: `tmdb:${mediaType}:${id}`,
@@ -126,7 +128,7 @@ export function mapTmdbMedia(payload: TmdbMedia, categoryOverride?: MediaCategor
     category: getCategory(mediaType, categoryOverride),
     title,
     originalTitle: asString(payload.original_title) ?? asString(payload.original_name),
-    posterUrl: posterPath ? `${TMDB_IMAGE_URL}${posterPath}` : undefined,
+    posterUrl: posterPath ? `${TMDB_IMAGE_URL}${posterPath}` : backdropPath ? `${TMDB_BACKDROP_URL}${backdropPath}` : undefined,
     releaseDate,
     genres: getGenres(payload),
     runtimeMinutes: asNumber(payload.runtime) ?? (Array.isArray(payload.episode_run_time) ? asNumber(payload.episode_run_time[0]) : undefined),

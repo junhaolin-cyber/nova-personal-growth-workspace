@@ -72,6 +72,7 @@ export function TrendLife() {
   const [view, setView] = React.useState<TrendLifeView>("overview");
   const [search, setSearch] = React.useState("");
   const [state, setState] = React.useState<TrendLifeState>(emptyState);
+  const [coverByItemId, setCoverByItemId] = React.useState<Record<string, string>>({});
   const [hydrated, setHydrated] = React.useState(false);
   const visibleItems = React.useMemo(() => itemsForView(view, state, search, allItems), [view, state, search, allItems]);
   const visibleBrands = React.useMemo(() => brandsForView(view, state, search), [view, state, search]);
@@ -87,6 +88,21 @@ export function TrendLife() {
   React.useEffect(() => {
     if (hydrated) writeTrendLifeState(state);
   }, [hydrated, state]);
+
+  React.useEffect(() => {
+    const urls = [...new Set(allItems.map((item) => item.sourceUrl).filter((url): url is string => Boolean(url)))];
+    if (!urls.length) return;
+    const controller = new AbortController();
+    fetch("/api/trend-life/covers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urls }), signal: controller.signal })
+      .then((response) => response.ok ? response.json() as Promise<{ covers?: Record<string, { coverUrl?: string }> }> : { covers: {} })
+      .then((result) => {
+        const next: Record<string, string> = {};
+        allItems.forEach((item) => { const cover = item.sourceUrl ? result.covers?.[item.sourceUrl]?.coverUrl : undefined; if (cover) next[item.id] = cover; });
+        setCoverByItemId(next);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [allItems]);
 
   const toggleFavorite = (id: string) => setState((current) => ({
     ...current,
@@ -145,7 +161,7 @@ export function TrendLife() {
           {!isCollectionView && visibleItems.length === 0 ? <div className="rounded-[24px] border border-dashed border-[#D5D8E1] bg-white p-12 text-center"><Star className="mx-auto text-[#B8BBD0]" size={28} /><p className="mt-4 font-semibold">没有找到匹配内容</p><p className="mt-2 text-sm text-muted">可以换一个关键词，或先从今日潮流开始浏览。</p></div> : null}
           {isCollectionView && !hasCollectionContent ? <div className="rounded-[24px] border border-dashed border-[#D5D8E1] bg-white p-12 text-center"><Star className="mx-auto text-[#B8BBD0]" size={28} /><p className="mt-4 font-semibold">{view === "favorites" ? "还没有收藏内容" : "还没有浏览记录"}</p><p className="mt-2 text-sm text-muted">可以先从今日潮流开始浏览，遇到喜欢的内容就收藏起来。</p></div> : null}
           {visibleBrands.length > 0 ? <div className="mb-6"><h3 className="mb-3 text-base font-extrabold">{view === "favorites" ? "收藏的品牌" : "浏览过的品牌"}</h3><div className="grid gap-3 md:grid-cols-2">{visibleBrands.map((brand) => <TrendBrandCard key={brand.id} brand={brand} isFavorite={state.favoriteBrandIds.includes(brand.id)} onFavorite={() => toggleBrandFavorite(brand.id)} onOpen={() => recordBrandHistory(brand.id)} />)}</div></div> : null}
-          {visibleItems.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleItems.map((item) => <TrendLifeCard key={item.id} item={item} isFavorite={state.favoriteIds.includes(item.id)} onFavorite={() => toggleFavorite(item.id)} onOpen={() => recordHistory(item.id)} />)}</div> : null}
+          {visibleItems.length > 0 ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleItems.map((item) => <TrendLifeCard key={item.id} item={item} coverUrl={coverByItemId[item.id]} isFavorite={state.favoriteIds.includes(item.id)} onFavorite={() => toggleFavorite(item.id)} onOpen={() => recordHistory(item.id)} />)}</div> : null}
         </>}
       </section>
       <p className="mt-8 text-xs leading-5 text-muted">内容以品牌官网、官方栏目和官方公开视频入口为主。推荐说明只根据公开页面的主题标签生成，不替代原文，也不提供购物、价格、库存、尺码或抢购服务。</p>
