@@ -3,8 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, CircleAlert, Cloud, LogOut, Monitor, Save, Settings2, Smartphone, UserRound, X } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, CircleCheck, Cloud, CloudOff, Loader2, LogOut, Monitor, RefreshCw, Save, Settings2, Smartphone, UserRound, WifiOff, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { AuthAccount, DeviceRecord, UserProfile } from "../types";
+import type { SyncStatusController } from "@/features/sync/types";
 
 type UserMenuProps = {
   account: AuthAccount | null;
@@ -14,11 +16,12 @@ type UserMenuProps = {
   loadDevices: () => Promise<void>;
   updateProfile: (updates: Pick<UserProfile, "display_name" | "language" | "timezone">) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
+  sync: SyncStatusController;
 };
 
 type Panel = "profile" | "devices" | "sync" | null;
 
-export function UserMenu({ account, devices, isLoading, error, loadDevices, updateProfile, signOut }: UserMenuProps) {
+export function UserMenu({ account, devices, isLoading, error, loadDevices, updateProfile, signOut, sync }: UserMenuProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [panel, setPanel] = React.useState<Panel>(null);
@@ -70,7 +73,7 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   return <div className="relative">
     <button type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-xl border border-line bg-white px-2 py-1.5 text-left transition hover:border-accent sm:px-2.5" aria-expanded={open} aria-label="打开用户菜单"><span className="grid size-8 place-items-center rounded-full bg-[#F0E8DD] text-xs font-bold text-[#8A6C49]">{initial}</span><span className="hidden max-w-[120px] sm:block"><span className="block truncate text-xs font-bold">{displayName}</span><span className="block max-w-[120px] truncate text-[10px] text-muted">{email}</span></span><ChevronDown size={14} className={`text-muted transition ${open ? "rotate-180" : ""}`} /></button>
     {open ? <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-line bg-white p-2 shadow-xl"><div className="border-b border-line px-3 pb-3 pt-2"><p className="truncate text-sm font-bold">{displayName}</p><p className="mt-1 truncate text-xs text-muted">{email}</p></div><div className="py-2"><MenuButton icon={<UserRound size={16} />} label="我的资料" onClick={() => void openPanel("profile")} /><MenuButton icon={<Monitor size={16} />} label="我的设备" onClick={() => void openPanel("devices")} /><MenuButton icon={<Cloud size={16} />} label="同步状态" onClick={() => void openPanel("sync")} /><Link href="/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"><Settings2 size={16} />设置</Link></div><div className="border-t border-line pt-2"><button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#B26F3C] hover:bg-[#FFF8F2]"><LogOut size={16} />退出登录</button></div>{error ? <p className="px-3 pb-1 pt-2 text-xs text-[#B26F3C]">{error}</p> : null}</div> : null}
-    {panel ? <PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} onClose={() => setPanel(null)} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} /> : null}
+    {panel ? <PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} sync={sync} onClose={() => setPanel(null)} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} /> : null}
   </div>;
 }
 
@@ -78,9 +81,9 @@ function MenuButton({ icon, label, onClick }: { icon: React.ReactNode; label: st
   return <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink">{icon}{label}</button>;
 }
 
-function PanelDialog({ panel, displayName, email, draft, devices, currentDeviceId, busy, error, onClose, onDraftChange, onSave }: { panel: Exclude<Panel, null>; displayName: string; email: string; draft: { display_name: string; language: string; timezone: string }; devices: DeviceRecord[]; currentDeviceId: string | null; busy: boolean; error: string | null; onClose: () => void; onDraftChange: React.Dispatch<React.SetStateAction<{ display_name: string; language: string; timezone: string }>>; onSave: () => void }) {
+function PanelDialog({ panel, displayName, email, draft, devices, currentDeviceId, busy, error, sync, onClose, onDraftChange, onSave }: { panel: Exclude<Panel, null>; displayName: string; email: string; draft: { display_name: string; language: string; timezone: string }; devices: DeviceRecord[]; currentDeviceId: string | null; busy: boolean; error: string | null; sync: SyncStatusController; onClose: () => void; onDraftChange: React.Dispatch<React.SetStateAction<{ display_name: string; language: string; timezone: string }>>; onSave: () => void }) {
   const title = panel === "profile" ? "我的资料" : panel === "devices" ? "我的设备" : "同步状态";
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-5 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}><div className="max-h-[min(720px,calc(100vh-4rem))] w-full max-w-lg overflow-y-auto rounded-[28px] border border-line bg-white p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-accent">账号中心</p><h2 className="mt-2 text-2xl font-extrabold">{title}</h2></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl text-muted hover:bg-canvas hover:text-ink" aria-label="关闭"><X size={18} /></button></div>{panel === "profile" ? <ProfilePanel displayName={displayName} email={email} draft={draft} busy={busy} error={error} onDraftChange={onDraftChange} onSave={onSave} /> : panel === "devices" ? <DevicesPanel devices={devices} currentDeviceId={currentDeviceId} error={error} /> : <SyncPanel />}</div></div>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-5 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}><div className="max-h-[min(720px,calc(100vh-4rem))] w-full max-w-lg overflow-y-auto rounded-[28px] border border-line bg-white p-6 shadow-2xl sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-accent">账号中心</p><h2 className="mt-2 text-2xl font-extrabold">{title}</h2></div><button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl text-muted hover:bg-canvas hover:text-ink" aria-label="关闭"><X size={18} /></button></div>{panel === "profile" ? <ProfilePanel displayName={displayName} email={email} draft={draft} busy={busy} error={error} onDraftChange={onDraftChange} onSave={onSave} /> : panel === "devices" ? <DevicesPanel devices={devices} currentDeviceId={currentDeviceId} error={error} /> : <SyncPanel sync={sync} />}</div></div>;
 }
 
 function ProfilePanel({ displayName, email, draft, busy, error, onDraftChange, onSave }: { displayName: string; email: string; draft: { display_name: string; language: string; timezone: string }; busy: boolean; error: string | null; onDraftChange: React.Dispatch<React.SetStateAction<{ display_name: string; language: string; timezone: string }>>; onSave: () => void }) {
@@ -91,8 +94,19 @@ function DevicesPanel({ devices, currentDeviceId, error }: { devices: DeviceReco
   return <div className="mt-7">{error ? <InlineError message={error} /> : null}{devices.length === 0 ? <div className="rounded-2xl border border-dashed border-line bg-canvas p-6 text-center text-sm text-muted">暂时没有已登记的设备。</div> : <div className="space-y-3">{devices.map((device) => <div key={device.id} className="flex items-start gap-3 rounded-2xl border border-line p-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#E7E9FF] text-accent">{device.device_type === "mobile" ? <Smartphone size={17} /> : <Monitor size={17} />}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{device.device_name}</p>{device.id === currentDeviceId ? <span className="rounded-lg bg-[#E7E9FF] px-2 py-1 text-[11px] font-bold text-accent">当前设备</span> : null}</div><p className="mt-1 text-xs text-muted">{device.platform} · {device.device_type === "mobile" ? "手机 / 平板" : "电脑"}</p><p className="mt-2 text-xs text-muted">最后活跃：{formatDateTime(device.last_seen_at)}</p></div></div>)}</div>}</div>;
 }
 
-function SyncPanel() {
-  return <div className="mt-7"><div className="rounded-2xl border border-[#E5E1FA] bg-[#F8F7FF] p-5"><div className="flex items-start gap-3"><Cloud className="mt-0.5 text-accent" size={19} /><div><p className="font-bold">云同步尚未启用，将在下一阶段开放。</p><p className="mt-2 text-sm leading-6 text-muted">当前阶段只管理账号、个人资料和设备信息，不会上传任何业务数据。</p></div></div></div><div className="mt-4 rounded-2xl bg-canvas p-4 text-sm leading-6 text-muted"><p className="flex items-center gap-2 font-semibold text-ink"><Check size={15} className="text-[#43845D]" />现有本地数据保持不变</p><p className="mt-2">退出登录也不会清除 NOVA 的 Local Storage 内容。</p></div></div>;
+function SyncPanel({ sync }: { sync: SyncStatusController }) {
+  const status = getSyncStatusMeta(sync.status);
+  const StatusIcon = status.icon;
+  const cloudText = sync.cloud === "connected" ? "云端连接正常" : sync.cloud === "unavailable" ? "云端连接暂时不可用" : "正在检查云端连接";
+  return <div className="mt-7"><div className={`rounded-2xl border p-5 ${status.panelTone}`}><div className="flex items-start gap-3"><StatusIcon className={`mt-0.5 ${status.iconTone}`} size={19} /><div className="min-w-0"><p className="font-bold">同步状态：{status.label}</p><p className="mt-2 text-sm leading-6 text-muted">{cloudText} · 网络{sync.online ? "在线" : "离线"} · 待处理队列 {sync.queueSize} 条</p>{sync.lastError ? <p className="mt-2 text-sm leading-6 text-[#B26F3C]">{sync.lastError}</p> : null}{sync.lastSyncedAt ? <p className="mt-2 text-xs text-muted">最近检查：{formatDateTime(sync.lastSyncedAt)}</p> : null}</div></div></div><div className="mt-4 rounded-2xl bg-canvas p-4 text-sm leading-6 text-muted"><p className="flex items-center gap-2 font-semibold text-ink"><Check size={15} className="text-[#43845D]" />本阶段不会迁移或上传任何业务数据</p><p className="mt-2">同步队列、版本号和冲突策略已经就绪，业务模块将在后续阶段逐个接入。</p><button type="button" onClick={() => void sync.retry()} disabled={sync.status === "syncing"} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-muted transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={14} className={sync.status === "syncing" ? "animate-spin" : ""} />{sync.status === "syncing" ? "检查中…" : "重新检查"}</button></div></div>;
+}
+
+function getSyncStatusMeta(status: SyncStatusController["status"]): { label: string; icon: LucideIcon; iconTone: string; panelTone: string } {
+  if (status === "syncing") return { label: "同步中", icon: Loader2, iconTone: "text-accent animate-spin", panelTone: "border-[#E5E1FA] bg-[#F8F7FF]" };
+  if (status === "pending") return { label: "等待同步", icon: Cloud, iconTone: "text-accent", panelTone: "border-[#E5E1FA] bg-[#F8F7FF]" };
+  if (status === "offline") return { label: "离线", icon: WifiOff, iconTone: "text-[#B26F3C]", panelTone: "border-[#F0D2BB] bg-[#FFF8F2]" };
+  if (status === "failed") return { label: "同步失败", icon: CloudOff, iconTone: "text-[#B26F3C]", panelTone: "border-[#F0D2BB] bg-[#FFF8F2]" };
+  return { label: "已同步", icon: CircleCheck, iconTone: "text-[#43845D]", panelTone: "border-[#CDE7D5] bg-[#F3FBF5]" };
 }
 
 function InlineError({ message }: { message: string }) {

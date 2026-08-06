@@ -17,6 +17,7 @@ import { TrendLife } from "@/features/trend-life/TrendLife";
 import { MoviesTv } from "@/features/movies-tv/MoviesTv";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useAuthAccount } from "@/features/auth/useAuthAccount";
+import { useSyncStatus } from "@/features/sync/useSyncStatus";
 import { activeIconShapes, modules } from "@/lib/modules";
 
 const activeModuleStyles: Record<string, string> = {
@@ -37,6 +38,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const pathname = usePathname();
   const [locale, setLocale] = React.useState<"zh" | "en">("zh");
   const auth = useAuthAccount();
+  const sync = useSyncStatus(auth.account);
   const active = activeModule ?? (pathname === "/" ? "dashboard" : pathname.slice(1));
   const isZh = locale === "zh";
   const accountName = auth.account?.profile?.display_name || (auth.account?.user.user_metadata.display_name as string | undefined) || auth.account?.user.email?.split("@")[0] || "NOVA 用户";
@@ -71,7 +73,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
       <div className="lg:pl-[252px]">
         <header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-line/80 bg-canvas/90 px-5 backdrop-blur-xl sm:px-8 lg:px-12">
           <div className="flex items-center gap-3"><button className="grid size-10 place-items-center rounded-xl border border-line bg-white lg:hidden"><Menu size={18} /></button><div className="text-sm text-muted">{active === "dashboard" ? (isZh ? "工作台 / 总览" : "Workspace / Overview") : `${isZh ? "工作台 / " : "Workspace / "}${isZh ? modules.find((item) => item.slug === active)?.label ?? "页面" : modules.find((item) => item.slug === active)?.labelEn ?? "Page"}`}</div></div>
-          <div className="flex items-center gap-2 sm:gap-3"><button onClick={() => setLocale(isZh ? "en" : "zh")} className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-muted transition hover:border-accent hover:text-accent" aria-label="切换语言"><Languages size={14} /><span>{isZh ? "中 / EN" : "EN / 中"}</span></button><button className="hidden items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs text-muted sm:flex"><Search size={14} /><span>{isZh ? "搜索" : "Search"}</span><kbd className="ml-3 rounded-md bg-canvas px-1.5 py-0.5 font-sans text-[10px]">⌘ K</kbd></button><button className="grid size-10 place-items-center rounded-xl border border-line bg-white text-muted" aria-label={isZh ? "提醒" : "Notifications"}><Bell size={17} /></button><UserMenu {...auth} /><button className="grid size-10 place-items-center rounded-xl bg-ink text-white shadow-sm" aria-label={isZh ? "新增" : "Add"}><Plus size={18} /></button></div>
+          <div className="flex items-center gap-2 sm:gap-3"><button onClick={() => setLocale(isZh ? "en" : "zh")} className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-muted transition hover:border-accent hover:text-accent" aria-label="切换语言"><Languages size={14} /><span>{isZh ? "中 / EN" : "EN / 中"}</span></button><button className="hidden items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs text-muted sm:flex"><Search size={14} /><span>{isZh ? "搜索" : "Search"}</span><kbd className="ml-3 rounded-md bg-canvas px-1.5 py-0.5 font-sans text-[10px]">⌘ K</kbd></button><button className="grid size-10 place-items-center rounded-xl border border-line bg-white text-muted" aria-label={isZh ? "提醒" : "Notifications"}><Bell size={17} /></button><UserMenu {...auth} sync={sync} /><button className="grid size-10 place-items-center rounded-xl bg-ink text-white shadow-sm" aria-label={isZh ? "新增" : "Add"}><Plus size={18} /></button></div>
         </header>
         <main className="h-[calc(100vh-76px)] min-h-[620px] overflow-y-auto overscroll-y-auto px-5 py-8 pb-20 sm:px-8 lg:px-12 lg:py-10">{active === "dashboard" ? <Dashboard locale={locale} /> : active === "today" ? <TodayPlan locale={locale} /> : active === "english" ? <EnglishLearning /> : active === "speaking" ? <Speaking /> : active === "finance" ? <FinanceLearning /> : active === "ledger" ? <Bookkeeping /> : active === "food" ? <FoodDiscovery /> : active === "exercise" ? <ExerciseTracker /> : active === "news" ? <NewsPage /> : active === "trend-life" ? <TrendLife /> : active === "movies-tv" ? <MoviesTv /> : <ModulePlaceholder slug={active} locale={locale} />}</main>
       </div>
