@@ -1,4 +1,5 @@
 import type { SavedExpression, SpeakingDraft, SpeakingSessionRecord, SpeakingSettings, SpeakingStorageState } from "./types";
+import { notifyThirdBatchStorageChanged } from "@/features/sync/events";
 
 export const SPEAKING_STORAGE_KEYS = {
   settings: "nova:speaking:settings:v1",
@@ -33,6 +34,7 @@ function writeValue<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
+    notifyThirdBatchStorageChanged("speaking");
   } catch {
     // Storage failures should never make the speaking page unusable.
   }
@@ -100,11 +102,13 @@ export function loadSpeakingDraft() {
 export function saveSpeakingDraft(draft: SpeakingDraft | null) {
   if (draft) writeValue(SPEAKING_STORAGE_KEYS.draft, draft);
   else if (typeof window !== "undefined") {
-    try { window.localStorage.removeItem(SPEAKING_STORAGE_KEYS.draft); } catch { /* ignore storage failures */ }
+    try {
+      window.localStorage.removeItem(SPEAKING_STORAGE_KEYS.draft);
+      notifyThirdBatchStorageChanged("speaking");
+    } catch { /* ignore storage failures */ }
   }
 }
 
 export function loadSpeakingState(): SpeakingStorageState {
   return { settings: loadSpeakingSettings(), sessions: loadSpeakingSessions(), expressions: loadSavedExpressions(), draft: loadSpeakingDraft() };
 }
-

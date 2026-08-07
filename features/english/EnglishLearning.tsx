@@ -15,6 +15,7 @@ import { buildDailyLearningRecord, getLearningStats } from "./logic/statistics";
 import { getDateKey, formatDateLabel } from "./logic/date";
 import { createDefaultEnglishState, loadEnglishState, saveEnglishState } from "./storage";
 import { speakWord } from "./utils/speech";
+import { THIRD_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 import type { Accent, EnglishLearningState, WordProgress, WordStatus } from "./types";
 
 const wordMap = new Map(englishWords.map((word) => [word.id, word]));
@@ -35,6 +36,17 @@ export function EnglishLearning() {
     const plan = getOrCreateDailyPlan(englishWords, stored, today);
     setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
     setIsHydrated(true);
+  }, [today]);
+
+  React.useEffect(() => {
+    const handleRemoteMerged = () => {
+      const stored = loadEnglishState();
+      const plan = getOrCreateDailyPlan(englishWords, stored, today);
+      setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
+      setCurrentIndex(0);
+    };
+    window.addEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
   }, [today]);
 
   React.useEffect(() => {

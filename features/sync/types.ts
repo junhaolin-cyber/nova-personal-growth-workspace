@@ -4,7 +4,9 @@ export type SyncCloudState = "unknown" | "connected" | "unavailable";
 
 export type SyncOperation = "upsert" | "delete";
 
-export type SyncItemType = "favorite" | "status" | "task" | "exercise-type" | "exercise-record";
+export type SyncItemType = "favorite" | "status" | "task" | "exercise-type" | "exercise-record"
+  | "english-settings" | "english-word-progress" | "english-daily-plan" | "english-learning-record" | "english-recommendation"
+  | "speaking-settings" | "speaking-session" | "speaking-expression" | "speaking-draft";
 export type SyncItemState = "favorite" | "completed" | "want" | "visited" | "active";
 
 export type SyncQueueItem = {

@@ -1,4 +1,5 @@
 import type { DailyLearningRecord, DailyWordPlan, EnglishLearningSettings, EnglishLearningState, RecommendationState, WordProgress, WordStatus } from "./types";
+import { notifyThirdBatchStorageChanged } from "@/features/sync/events";
 
 export const ENGLISH_STORAGE_KEY = "nova:english-learning:v1";
 
@@ -99,6 +100,7 @@ export function saveEnglishState(state: EnglishLearningState) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(ENGLISH_STORAGE_KEY, JSON.stringify(state));
+    notifyThirdBatchStorageChanged("english");
   } catch {
     // A storage quota or privacy error should not make the page unusable.
   }

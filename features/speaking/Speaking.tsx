@@ -17,6 +17,7 @@ import { SessionSummary } from "./components/SessionSummary";
 import { SpeakingHistory } from "./components/SpeakingHistory";
 import { SpeakingOverview } from "./components/SpeakingOverview";
 import { SpeakingSettings as SpeakingSettingsPanel } from "./components/SpeakingSettings";
+import { THIRD_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 export function Speaking() {
   const [settings, setSettings] = React.useState<SpeakingSettings>(defaultSpeakingSettings);
@@ -56,6 +57,26 @@ export function Speaking() {
     }
     setIsHydrated(true);
   }, []);
+
+  React.useEffect(() => {
+    const handleRemoteMerged = () => {
+      const stored = loadSpeakingState();
+      setSettings(stored.settings);
+      setSessions(stored.sessions);
+      setExpressions(stored.expressions);
+      if (!activeScenarioId && stored.draft) {
+        const draftScenario = speakingScenarios.find((scenario) => scenario.id === stored.draft?.scenarioId);
+        if (draftScenario) {
+          setActiveScenarioId(draftScenario.id);
+          setStartedAt(stored.draft.startedAt);
+          setMessages(stored.draft.messages);
+          setHintLevel(stored.draft.hintLevel);
+        }
+      }
+    };
+    window.addEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, [activeScenarioId]);
 
   React.useEffect(() => { if (isHydrated) saveSpeakingSettings(settings); }, [isHydrated, settings]);
   React.useEffect(() => { if (isHydrated) saveSpeakingSessions(sessions); }, [isHydrated, sessions]);
