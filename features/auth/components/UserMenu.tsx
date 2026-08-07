@@ -29,6 +29,10 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   const [panelError, setPanelError] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState({ display_name: "", language: "zh-CN", timezone: "Asia/Shanghai" });
   const userMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const closePanel = React.useCallback(() => {
+    setPanel(null);
+    window.setTimeout(() => userMenuButtonRef.current?.focus(), 0);
+  }, []);
 
   if (isLoading) return <div className="hidden h-10 w-28 animate-pulse rounded-xl bg-white/70 sm:block" aria-label="正在读取账号" />;
   if (!account) return <Link href="/auth?mode=login" className="inline-flex items-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">登录账号</Link>;
@@ -46,11 +50,6 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
     }
     if (nextPanel === "devices") await loadDevices();
   };
-
-  const closePanel = React.useCallback(() => {
-    setPanel(null);
-    window.setTimeout(() => userMenuButtonRef.current?.focus(), 0);
-  }, []);
 
   const handleSaveProfile = async () => {
     if (busy) return;
