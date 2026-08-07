@@ -4,13 +4,16 @@ export type SyncCloudState = "unknown" | "connected" | "unavailable";
 
 export type SyncOperation = "upsert" | "delete";
 
+export type SyncItemType = "favorite" | "status" | "task" | "exercise-type" | "exercise-record";
+export type SyncItemState = "favorite" | "completed" | "want" | "visited" | "active";
+
 export type SyncQueueItem = {
   id: string;
   module: string;
   entityId: string;
-  itemType?: "favorite" | "status";
+  itemType?: SyncItemType;
   operation: SyncOperation;
-  state?: "favorite" | "completed" | "want" | "visited";
+  state?: SyncItemState;
   payload?: Record<string, unknown> | null;
   sourceStorageKey?: string;
   deletedAt?: string | null;

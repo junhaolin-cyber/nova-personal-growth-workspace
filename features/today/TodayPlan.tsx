@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Check, Edit3, History, ListTodo, Plus, Trash2, X } from "lucide-react";
 import { createInitialTasks, getTodayDate, loadTasks, saveTasks } from "./storage";
 import type { PlanTask, TaskDraft, TaskPriority } from "./types";
+import { SECOND_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 type Locale = "zh" | "en";
 type ViewMode = "today" | "history";
@@ -27,6 +28,11 @@ export function TodayPlan({ locale = "zh" }: { locale?: Locale }) {
 
   useEffect(() => { const stored = loadTasks(); setTasks(stored.length > 0 ? stored : createInitialTasks(today)); setIsHydrated(true); }, [today]);
   useEffect(() => { if (isHydrated) saveTasks(tasks); }, [isHydrated, tasks]);
+  useEffect(() => {
+    const handleRemoteMerged = () => setTasks(loadTasks());
+    window.addEventListener(SECOND_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(SECOND_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, []);
 
   const todayTasks = useMemo(() => tasks.filter((task) => task.date === today), [tasks, today]);
   const visibleTasks = useMemo(() => {

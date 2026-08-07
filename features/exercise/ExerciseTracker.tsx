@@ -13,6 +13,7 @@ import { calculateExerciseStats } from "./stats";
 import { createDefaultExerciseData, loadExerciseData, saveExerciseData } from "./storage";
 import { createId, getDateKey, getMonthKey, shiftMonth } from "./utils";
 import type { ExerciseData, ExerciseRecord, ExerciseRecordInput, ExerciseType } from "./types";
+import { SECOND_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 export function ExerciseTracker() {
   const [data, setData] = React.useState<ExerciseData>(() => createDefaultExerciseData());
@@ -35,6 +36,12 @@ export function ExerciseTracker() {
   React.useEffect(() => {
     if (isHydrated) saveExerciseData({ ...data, settings: { ...data.settings, calendarMonth } });
   }, [calendarMonth, data, isHydrated]);
+
+  React.useEffect(() => {
+    const handleRemoteMerged = () => setData(loadExerciseData());
+    window.addEventListener(SECOND_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(SECOND_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, []);
 
   if (!isHydrated) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备运动记录空间…</div>;
 

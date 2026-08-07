@@ -1,4 +1,5 @@
 import type { PlanTask } from "./types";
+import { notifySecondBatchStorageChanged } from "@/features/sync/events";
 
 export const TASKS_STORAGE_KEY = "nova:today-tasks:v1";
 
@@ -13,7 +14,10 @@ export function loadTasks(): PlanTask[] {
 }
 
 export function saveTasks(tasks: PlanTask[]) {
-  if (typeof window !== "undefined") window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+    notifySecondBatchStorageChanged("today");
+  }
 }
 
 export function getTodayDate() {

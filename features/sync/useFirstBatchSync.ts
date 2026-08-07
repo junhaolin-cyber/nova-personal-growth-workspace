@@ -3,10 +3,11 @@
 import * as React from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AuthAccount } from "@/features/auth/types";
-import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT } from "./events";
+import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT } from "./events";
 import { isNetworkOnline } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
 import { enqueueLocalFirstBatchChanges, isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
+import { enqueueLocalSecondBatchChanges, runSecondBatchSyncCycle } from "./secondBatch";
 
 type ClientState = { client: ReturnType<typeof createSupabaseBrowserClient> | null; error: string | null };
 
@@ -44,13 +45,18 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       }
       if (!isNetworkOnline()) {
         if (!blockedRef.current) enqueueLocalFirstBatchChanges(deviceId);
+        enqueueLocalSecondBatchChanges(deviceId);
         setSharedSyncState({ status: "offline", online: false, lastError: null });
         return;
       }
       setSharedSyncState({ status: "syncing", online: true, cloud: "unknown", lastError: null });
       applyingRemoteRef.current = true;
       try {
-        const result = await runFirstBatchSyncCycle(client, accountId, deviceId, !blockedRef.current);
+        const firstBatchResult = await runFirstBatchSyncCycle(client, accountId, deviceId, !blockedRef.current);
+        const secondBatchResult = await runSecondBatchSyncCycle(client, accountId, deviceId);
+        const queueSize = readSyncQueue().length;
+        const failed = firstBatchResult.failed + secondBatchResult.failed;
+        const result = { queueSize, failed };
         setSharedSyncState({ status: result.queueSize ? "pending" : "synced", online: true, cloud: "connected", lastSyncedAt: result.queueSize ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: result.failed ? "部分资料等待下一次联网重试。" : null });
       } catch (error) {
         setSharedSyncState({ status: "failed", online: true, cloud: "unavailable", lastError: error instanceof Error ? error.message : "云同步暂时失败，请稍后重试。" });
@@ -94,6 +100,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
     const handleFocus = () => void runSyncCycle();
     const handleVisibilityChange = () => { if (document.visibilityState === "visible") void runSyncCycle(); };
     window.addEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
+    window.addEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -101,6 +108,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       window.removeEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
+      window.removeEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);

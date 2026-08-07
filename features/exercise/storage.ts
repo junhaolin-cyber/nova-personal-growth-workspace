@@ -1,5 +1,6 @@
 import { createDefaultExerciseTypes } from "./exerciseTypes";
 import { getMonthKey } from "./utils";
+import { notifySecondBatchStorageChanged } from "@/features/sync/events";
 import type { ExerciseData, ExerciseFeeling, ExerciseIntensity, ExerciseRecord, ExerciseSettings, ExerciseType } from "./types";
 
 export const EXERCISE_STORAGE_KEYS = {
@@ -100,4 +101,5 @@ export function saveExerciseData(data: ExerciseData): void {
   write(EXERCISE_STORAGE_KEYS.types, data.types);
   write(EXERCISE_STORAGE_KEYS.records, data.records);
   write(EXERCISE_STORAGE_KEYS.settings, data.settings);
+  notifySecondBatchStorageChanged("exercise");
 }
