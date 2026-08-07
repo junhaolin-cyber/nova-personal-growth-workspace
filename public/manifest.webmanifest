@@ -1,0 +1,9 @@
+{
+  "name": "NOVA 个人成长工作台",
+  "short_name": "NOVA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#f6f7f9",
+  "lang": "zh-CN"
+}

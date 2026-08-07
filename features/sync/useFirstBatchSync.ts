@@ -6,7 +6,7 @@ import type { AuthAccount } from "@/features/auth/types";
 import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT } from "./events";
 import { isNetworkOnline } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
-import { isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
+import { enqueueLocalFirstBatchChanges, isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
 
 type ClientState = { client: ReturnType<typeof createSupabaseBrowserClient> | null; error: string | null };
 
@@ -43,6 +43,7 @@ export function useFirstBatchSync(account: AuthAccount | null): { runSyncCycle: 
         return;
       }
       if (!isNetworkOnline()) {
+        if (!blockedRef.current) enqueueLocalFirstBatchChanges(deviceId);
         setSharedSyncState({ status: "offline", online: false, lastError: null });
         return;
       }
@@ -88,11 +89,17 @@ export function useFirstBatchSync(account: AuthAccount | null): { runSyncCycle: 
       blockedRef.current = false;
       void runSyncCycle();
     };
+    const handleOnline = () => void runSyncCycle();
+    const handleOffline = () => setSharedSyncState({ status: "offline", online: false, lastError: null });
     window.addEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     return () => {
       window.removeEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
   }, [runSyncCycle]);

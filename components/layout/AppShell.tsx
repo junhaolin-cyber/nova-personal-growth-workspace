@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronDown, Command, Languages, LayoutDashboard, Menu, Plus, Search, Settings2, Sparkles, UserRound, X } from "lucide-react";
+import { Bell, ChevronDown, Command, Languages, LayoutDashboard, Menu, MoreHorizontal, Plus, Search, Settings2, Sparkles, UserRound, X } from "lucide-react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { TodayPlan } from "@/features/today/TodayPlan";
 import { EnglishLearning } from "@/features/english/EnglishLearning";
@@ -41,6 +41,8 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const pathname = usePathname();
   const [locale, setLocale] = React.useState<"zh" | "en">("zh");
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState(true);
   const auth = useAuthAccount();
   const firstBatchSync = useFirstBatchSync(auth.account);
   const sync = useSyncStatus(auth.account, firstBatchSync.runSyncCycle);
@@ -56,12 +58,27 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
 
   React.useEffect(() => {
     setMobileNavOpen(false);
+    setMoreOpen(false);
   }, [pathname]);
+
+  React.useEffect(() => {
+    const updateNetworkState = () => setIsOnline(navigator.onLine);
+    updateNetworkState();
+    window.addEventListener("online", updateNetworkState);
+    window.addEventListener("offline", updateNetworkState);
+    return () => {
+      window.removeEventListener("online", updateNetworkState);
+      window.removeEventListener("offline", updateNetworkState);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!mobileNavOpen) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileNavOpen(false);
+      if (event.key === "Escape") {
+        setMobileNavOpen(false);
+        setMoreOpen(false);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -94,17 +111,26 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
             <div className="text-sm text-muted">{active === "dashboard" ? (isZh ? "工作台 / 总览" : "Workspace / Overview") : `${isZh ? "工作台 / " : "Workspace / "}${isZh ? modules.find((item) => item.slug === active)?.label ?? "页面" : modules.find((item) => item.slug === active)?.labelEn ?? "Page"}`}</div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => setLocale(isZh ? "en" : "zh")} className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-muted transition hover:border-accent hover:text-accent" aria-label="切换语言"><Languages size={14} /><span>{isZh ? "中 / EN" : "EN / 中"}</span></button>
+            <div className="relative sm:hidden">
+              <button type="button" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-haspopup="menu" aria-label="打开更多操作" className="grid size-10 place-items-center rounded-xl border border-line bg-white text-muted"><MoreHorizontal size={18} /></button>
+              {moreOpen ? <div role="menu" className="absolute right-0 top-12 z-40 w-40 rounded-2xl border border-line bg-white p-2 shadow-xl">
+                <button type="button" role="menuitem" onClick={() => { setLocale(isZh ? "en" : "zh"); setMoreOpen(false); }} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-muted hover:bg-canvas hover:text-ink"><Languages size={16} />{isZh ? "切换为 English" : "切换为中文"}</button>
+                <button type="button" role="menuitem" onClick={() => setMoreOpen(false)} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-muted hover:bg-canvas hover:text-ink"><Search size={16} />{isZh ? "搜索" : "Search"}</button>
+                <button type="button" role="menuitem" onClick={() => setMoreOpen(false)} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold text-muted hover:bg-canvas hover:text-ink"><Bell size={16} />{isZh ? "提醒" : "Notifications"}</button>
+              </div> : null}
+            </div>
+            <button onClick={() => setLocale(isZh ? "en" : "zh")} className="hidden items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-muted transition hover:border-accent hover:text-accent sm:flex" aria-label="切换语言"><Languages size={14} /><span>{isZh ? "中 / EN" : "EN / 中"}</span></button>
             <button className="hidden items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs text-muted sm:flex"><Search size={14} /><span>{isZh ? "搜索" : "Search"}</span><kbd className="ml-3 rounded-md bg-canvas px-1.5 py-0.5 font-sans text-[10px]">⌘K</kbd></button>
-            <button className="grid size-10 place-items-center rounded-xl border border-line bg-white text-muted" aria-label={isZh ? "提醒" : "Notifications"}><Bell size={17} /></button>
+            <button className="hidden size-10 place-items-center rounded-xl border border-line bg-white text-muted sm:grid" aria-label={isZh ? "提醒" : "Notifications"}><Bell size={17} /></button>
             <UserMenu {...auth} sync={sync} />
-            <button className="grid size-10 place-items-center rounded-xl bg-ink text-white shadow-sm" aria-label={isZh ? "新增" : "Add"}><Plus size={18} /></button>
+            <button className="hidden size-10 place-items-center rounded-xl bg-ink text-white shadow-sm sm:grid" aria-label={isZh ? "新增" : "Add"}><Plus size={18} /></button>
           </div>
         </header>
         <main className="min-h-[calc(100vh-76px)] overflow-y-visible overscroll-y-auto px-5 py-8 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-8 lg:h-[calc(100vh-76px)] lg:min-h-[620px] lg:overflow-y-auto lg:px-12 lg:py-10">
           {active === "dashboard" ? <Dashboard locale={locale} /> : active === "today" ? <TodayPlan locale={locale} /> : active === "english" ? <EnglishLearning /> : active === "speaking" ? <Speaking /> : active === "finance" ? <FinanceLearning /> : active === "ledger" ? <Bookkeeping /> : active === "food" ? <FoodDiscovery /> : active === "exercise" ? <ExerciseTracker /> : active === "news" ? <NewsPage /> : active === "trend-life" ? <TrendLife /> : active === "movies-tv" ? <MoviesTv /> : <ModulePlaceholder slug={active} locale={locale} />}
         </main>
       </div>
+      {!isOnline ? <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[70] -translate-x-1/2 rounded-full border border-[#F0D2BB] bg-[#FFF8F2] px-4 py-2 text-center text-xs font-semibold text-[#9C5D32] shadow-lg">当前离线，已保存到本地，联网后自动同步</div> : null}
       <FirstBatchMigrationPrompt controller={firstBatchMigration} />
     </div>
   );
