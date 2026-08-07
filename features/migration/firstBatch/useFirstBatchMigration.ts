@@ -6,6 +6,7 @@ import type { AuthAccount } from "@/features/auth/types";
 import { migrateFirstBatch } from "./service";
 import { scanFirstBatch } from "./scanner";
 import { createFirstBatchBackup, hasCompletedFirstBatchMigration, markFirstBatchMigrationCompleted } from "./storage";
+import { notifyFirstBatchMigrationCompleted } from "@/features/sync/events";
 import type { FirstBatchCounts, FirstBatchMigrationController, FirstBatchMigrationResult, FirstBatchMigrationStatus, FirstBatchPreview } from "./types";
 
 function previewForModules(preview: FirstBatchPreview, modules: Set<FirstBatchPreview["items"][number]["module"]>): FirstBatchPreview | null {
@@ -64,6 +65,7 @@ export function useFirstBatchMigration(account: AuthAccount | null): FirstBatchM
       setResult(serviceResult.result);
       if (serviceResult.result.failedCount === 0) {
         markFirstBatchMigrationCompleted(userId, serviceResult.result.processedCount, backupKey);
+        notifyFirstBatchMigrationCompleted();
         setPreview(null);
         setStatus("completed");
       } else {

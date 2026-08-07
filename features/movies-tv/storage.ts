@@ -1,4 +1,5 @@
 import type { MoviesTvState, WatchRecord } from "./types";
+import { notifyFirstBatchStorageChanged } from "@/features/sync/events";
 
 const STORAGE_KEY = "nova-movies-tv:v1";
 const emptyState: MoviesTvState = { favoriteIds: [], watchRecords: [] };
@@ -37,5 +38,10 @@ export function readMoviesTvState(): MoviesTvState {
 
 export function writeMoviesTvState(state: MoviesTvState): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* 本地存储不可用时不影响页面 */ }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    notifyFirstBatchStorageChanged("movies-tv");
+  } catch {
+    // 本地存储不可用时不影响页面操作。
+  }
 }

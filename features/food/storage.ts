@@ -1,4 +1,5 @@
 import type { EvidenceConfidence, FoodDiscoveryState, OfficialRestaurantData, OfficialSourceRecord, RestaurantRecord, RestaurantSourceProvider, SourcedValue, VisitRecord } from "./types";
+import { notifyFirstBatchStorageChanged } from "@/features/sync/events";
 
 export const FOOD_STORAGE_KEYS = {
   discovery: "nova:food-discovery:v1",
@@ -143,4 +144,5 @@ export function saveFoodState(state: FoodDiscoveryState) {
   write(FOOD_STORAGE_KEYS.discovery, { version: 1, restaurants: state.restaurants });
   write(FOOD_STORAGE_KEYS.favorite, state.favoriteRestaurantIds);
   write(FOOD_STORAGE_KEYS.history, state.visits);
+  notifyFirstBatchStorageChanged("food");
 }

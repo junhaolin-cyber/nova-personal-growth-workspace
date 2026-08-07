@@ -6,13 +6,14 @@ import type { AuthAccount } from "@/features/auth/types";
 import { verifyCloudConnection, flushSyncQueue } from "./engine";
 import { isNetworkOnline, subscribeNetworkStatus } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
+import { SYNC_STATE_CHANGED_EVENT } from "./events";
 import type { SyncState, SyncStatusController } from "./types";
 
 function getOfflineState(state: SyncState): SyncState {
   return { ...state, online: false, status: "offline", lastError: null };
 }
 
-export function useSyncStatus(account: AuthAccount | null): SyncStatusController {
+export function useSyncStatus(account: AuthAccount | null, externalSync?: () => Promise<void>): SyncStatusController {
   const [state, setState] = React.useState<SyncState>(() => readSyncState());
   const stateRef = React.useRef(state);
   const inFlightRef = React.useRef<Promise<void> | null>(null);
@@ -34,6 +35,11 @@ export function useSyncStatus(account: AuthAccount | null): SyncStatusController
     if (inFlightRef.current) return inFlightRef.current;
 
     const run = (async () => {
+      if (externalSync) {
+        await externalSync();
+        setState(readSyncState());
+        return;
+      }
       if (!isNetworkOnline()) {
         updateState(getOfflineState(stateRef.current));
         return;
@@ -73,13 +79,15 @@ export function useSyncStatus(account: AuthAccount | null): SyncStatusController
     } finally {
       inFlightRef.current = null;
     }
-  }, [accountId, updateState]);
+  }, [accountId, externalSync, updateState]);
 
   React.useEffect(() => {
+    const handleSyncStateChanged = () => setState(readSyncState());
+    window.addEventListener(SYNC_STATE_CHANGED_EVENT, handleSyncStateChanged);
     updateState({ online: isNetworkOnline() });
     void runSyncCycle();
 
-    return subscribeNetworkStatus((online) => {
+    const unsubscribeNetwork = subscribeNetworkStatus((online) => {
       if (!online) {
         setState((current) => {
           const next = getOfflineState(current);
@@ -91,6 +99,10 @@ export function useSyncStatus(account: AuthAccount | null): SyncStatusController
       updateState({ online: true, status: readSyncQueue().length ? "pending" : "syncing" });
       void runSyncCycle();
     });
+    return () => {
+      window.removeEventListener(SYNC_STATE_CHANGED_EVENT, handleSyncStateChanged);
+      unsubscribeNetwork();
+    };
   }, [runSyncCycle, updateState]);
 
   return { ...state, retry: runSyncCycle };

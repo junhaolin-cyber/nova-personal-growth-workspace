@@ -1,4 +1,5 @@
 import type { TrendLifeState } from "./types";
+import { notifyFirstBatchStorageChanged } from "@/features/sync/events";
 
 const STORAGE_KEY = "nova-trend-life:v1";
 const emptyState: TrendLifeState = { favoriteIds: [], favoriteBrandIds: [], favoriteThemeIds: [], historyIds: [], historyBrandIds: [] };
@@ -27,5 +28,10 @@ export function readTrendLifeState(): TrendLifeState {
 
 export function writeTrendLifeState(state: TrendLifeState): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* 本地存储不可用时不影响页面浏览 */ }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    notifyFirstBatchStorageChanged("trend-life");
+  } catch {
+    // 本地存储不可用时不影响页面浏览。
+  }
 }

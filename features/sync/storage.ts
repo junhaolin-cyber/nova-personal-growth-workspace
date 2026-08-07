@@ -1,4 +1,5 @@
 import type { SyncQueueItem, SyncState } from "./types";
+import { SYNC_STATE_CHANGED_EVENT } from "./events";
 
 export const SYNC_STATE_STORAGE_KEY = "nova:sync:framework-state:v1";
 export const SYNC_QUEUE_STORAGE_KEY = "nova:sync:framework-queue:v1";
@@ -44,6 +45,7 @@ export function writeSyncState(state: SyncState): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(SYNC_STATE_STORAGE_KEY, JSON.stringify(state));
+    window.dispatchEvent(new Event(SYNC_STATE_CHANGED_EVENT));
   } catch {
     // 同步元数据不可用时不应阻塞现有业务页面。
   }

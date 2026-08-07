@@ -1,4 +1,5 @@
 import { DEFAULT_NEWS_SOURCES } from "./sources";
+import { notifyFirstBatchStorageChanged } from "@/features/sync/events";
 import { NEWS_CATEGORIES, type NewsCache, type NewsClientState, type NewsHistoryItem, type NewsSavedArticle, type NewsSettings, type NewsSource, type NewsTrackedEvent } from "./types";
 
 export const NEWS_STORAGE_KEYS = {
@@ -73,6 +74,7 @@ export function saveNewsState(state: NewsClientState): void {
   writeJson(NEWS_STORAGE_KEYS.history, state.history);
   writeJson(NEWS_STORAGE_KEYS.trackedEvents, state.trackedEvents);
   writeJson(NEWS_STORAGE_KEYS.sources, state.sources);
+  notifyFirstBatchStorageChanged("news");
 }
 
 export function loadNewsCache(): NewsCache | undefined { return readJson<NewsCache>(NEWS_STORAGE_KEYS.cache); }

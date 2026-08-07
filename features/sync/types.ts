@@ -8,7 +8,12 @@ export type SyncQueueItem = {
   id: string;
   module: string;
   entityId: string;
+  itemType?: "favorite" | "status";
   operation: SyncOperation;
+  state?: "favorite" | "completed" | "want" | "visited";
+  payload?: Record<string, unknown> | null;
+  sourceStorageKey?: string;
+  deletedAt?: string | null;
   version: number;
   deviceId: string;
   updatedAt: string;

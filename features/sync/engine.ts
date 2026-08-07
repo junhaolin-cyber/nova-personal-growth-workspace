@@ -20,7 +20,7 @@ function createQueueId(): string {
 
 export function enqueueSyncOperation(input: Omit<SyncQueueItem, "id" | "enqueuedAt">): SyncQueueItem[] {
   const nextItem: SyncQueueItem = { ...input, id: createQueueId(), enqueuedAt: new Date().toISOString() };
-  const queue = readSyncQueue().filter((item) => !(item.module === input.module && item.entityId === input.entityId));
+  const queue = readSyncQueue().filter((item) => !(item.module === input.module && item.entityId === input.entityId && item.itemType === input.itemType));
   const nextQueue = [...queue, nextItem];
   writeSyncQueue(nextQueue);
   return nextQueue;
