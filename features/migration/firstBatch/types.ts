@@ -5,7 +5,7 @@ export const FIRST_BATCH_MIGRATION_KEY = "first-user-data-v1";
 export type FirstBatchModule = "movies-tv" | "food" | "news" | "trend-life";
 export type FirstBatchItemType = "favorite" | "status";
 export type FirstBatchState = "favorite" | "completed" | "want" | "visited";
-export type FirstBatchMigrationStatus = "idle" | "ready" | "migrating" | "completed" | "failed";
+export type FirstBatchMigrationStatus = "idle" | "ready" | "migrating" | "completed" | "partial" | "failed";
 
 export type FirstBatchItem = {
   module: FirstBatchModule;
@@ -26,8 +26,20 @@ export type FirstBatchPreview = {
   total: number;
 };
 
+export type FirstBatchModuleResult = {
+  module: FirstBatchModule;
+  totalCount: number;
+  successCount: number;
+  skippedCount: number;
+  failedCount: number;
+};
+
 export type FirstBatchMigrationResult = {
   processedCount: number;
+  successCount: number;
+  skippedCount: number;
+  failedCount: number;
+  moduleResults: FirstBatchModuleResult[];
   backupKey: string;
 };
 

@@ -44,7 +44,9 @@ export function createFirstBatchBackup(userId: string, deviceId: string, items: 
   if (typeof window === "undefined") return null;
   const key = `${FIRST_BATCH_BACKUP_PREFIX}${userId}`;
   try {
-    window.localStorage.setItem(key, JSON.stringify({ version: 1, migrationKey: FIRST_BATCH_MIGRATION_KEY, userId, deviceId, createdAt: new Date().toISOString(), items }));
+    if (!window.localStorage.getItem(key)) {
+      window.localStorage.setItem(key, JSON.stringify({ version: 1, migrationKey: FIRST_BATCH_MIGRATION_KEY, userId, deviceId, createdAt: new Date().toISOString(), items }));
+    }
     return key;
   } catch {
     return null;

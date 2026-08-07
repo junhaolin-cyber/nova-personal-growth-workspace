@@ -6,7 +6,15 @@ import type { AuthAccount } from "@/features/auth/types";
 import { migrateFirstBatch } from "./service";
 import { scanFirstBatch } from "./scanner";
 import { createFirstBatchBackup, hasCompletedFirstBatchMigration, markFirstBatchMigrationCompleted } from "./storage";
-import type { FirstBatchMigrationController, FirstBatchMigrationResult, FirstBatchMigrationStatus, FirstBatchPreview } from "./types";
+import type { FirstBatchCounts, FirstBatchMigrationController, FirstBatchMigrationResult, FirstBatchMigrationStatus, FirstBatchPreview } from "./types";
+
+function previewForModules(preview: FirstBatchPreview, modules: Set<FirstBatchPreview["items"][number]["module"]>): FirstBatchPreview | null {
+  const items = preview.items.filter((item) => modules.has(item.module));
+  if (items.length === 0) return null;
+  const counts: FirstBatchCounts = { "movies-tv": 0, food: 0, news: 0, "trend-life": 0 };
+  for (const item of items) counts[item.module] += 1;
+  return { items, counts, total: items.length };
+}
 
 export function useFirstBatchMigration(account: AuthAccount | null): FirstBatchMigrationController {
   const userId = account?.user.id ?? null;
@@ -53,10 +61,17 @@ export function useFirstBatchMigration(account: AuthAccount | null): FirstBatchM
         setError(serviceResult.error ?? "迁移失败，本地数据和备份均已保留。");
         return;
       }
-      markFirstBatchMigrationCompleted(userId, serviceResult.result.processedCount, backupKey);
       setResult(serviceResult.result);
-      setPreview(null);
-      setStatus("completed");
+      if (serviceResult.result.failedCount === 0) {
+        markFirstBatchMigrationCompleted(userId, serviceResult.result.processedCount, backupKey);
+        setPreview(null);
+        setStatus("completed");
+      } else {
+        const failedModules = new Set(serviceResult.result.moduleResults.filter((module) => module.failedCount > 0).map((module) => module.module));
+        setPreview(previewForModules(preview, failedModules));
+        setStatus(serviceResult.result.successCount > 0 || serviceResult.result.skippedCount > 0 ? "partial" : "failed");
+        setError(serviceResult.result.successCount > 0 || serviceResult.result.skippedCount > 0 ? "部分记录迁移完成，失败记录仍保留在预览中，可继续重试。" : "本次没有记录迁移成功，请检查网络或云端权限后重试。");
+      }
     } catch {
       setStatus("failed");
       setError("云端连接暂时不可用，迁移未完成，本地数据和备份均已保留。");
@@ -68,6 +83,7 @@ export function useFirstBatchMigration(account: AuthAccount | null): FirstBatchM
     setPreview(null);
     setStatus("idle");
     setError(null);
+    setResult(null);
   }, [status]);
 
   return { preview, status, error, result, confirm, dismiss };
