@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, CircleAlert, CircleCheck, Cloud, CloudOff, Loader2, LogOut, Monitor, RefreshCw, Save, Settings2, Smartphone, UserRound, WifiOff, X } from "lucide-react";
@@ -29,6 +30,11 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   const [panelError, setPanelError] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState({ display_name: "", language: "zh-CN", timezone: "Asia/Shanghai" });
   const userMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [portalHost, setPortalHost] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    setPortalHost(document.body);
+  }, []);
 
   const closePanel = React.useCallback(() => {
     setPanel(null);
@@ -76,7 +82,7 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   return <div className="relative">
     <button ref={userMenuButtonRef} type="button" onClick={() => setOpen((value) => !value)} className="flex items-center gap-2 rounded-xl border border-line bg-white px-2 py-1.5 text-left transition hover:border-accent sm:px-2.5" aria-expanded={open} aria-label="打开用户菜单"><span className="grid size-8 place-items-center rounded-full bg-[#F0E8DD] text-xs font-bold text-[#8A6C49]">{initial}</span><span className="hidden max-w-[120px] sm:block"><span className="block truncate text-xs font-bold">{displayName}</span><span className="block max-w-[120px] truncate text-[10px] text-muted">{email}</span></span><ChevronDown size={14} className={`text-muted transition ${open ? "rotate-180" : ""}`} /></button>
     {open ? <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl border border-line bg-white p-2 shadow-xl"><div className="border-b border-line px-3 pb-3 pt-2"><p className="truncate text-sm font-bold">{displayName}</p><p className="mt-1 truncate text-xs text-muted">{email}</p></div><div className="py-2"><MenuButton icon={<UserRound size={16} />} label="我的资料" onClick={() => void openPanel("profile")} /><MenuButton icon={<Monitor size={16} />} label="我的设备" onClick={() => void openPanel("devices")} /><MenuButton icon={<Cloud size={16} />} label="同步状态" onClick={() => void openPanel("sync")} /><Link href="/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"><Settings2 size={16} />设置</Link></div><div className="border-t border-line pt-2"><button type="button" onClick={() => void handleSignOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#B26F3C] hover:bg-[#FFF8F2]"><LogOut size={16} />退出登录</button></div>{error ? <p className="px-3 pb-1 pt-2 text-xs text-[#B26F3C]">{error}</p> : null}</div> : null}
-    {panel ? <PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} sync={sync} onClose={closePanel} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} /> : null}
+    {panel && portalHost ? createPortal(<PanelDialog panel={panel} displayName={displayName} email={email} draft={draft} devices={devices} currentDeviceId={account.currentDeviceId} busy={busy} error={panelError} sync={sync} onClose={closePanel} onDraftChange={setDraft} onSave={() => void handleSaveProfile()} />, portalHost) : null}
   </div>;
 }
 
