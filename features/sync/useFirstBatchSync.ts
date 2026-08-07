@@ -15,7 +15,7 @@ function setSharedSyncState(patch: Partial<ReturnType<typeof readSyncState>>): v
   writeSyncState({ ...current, ...patch, queueSize: readSyncQueue().length });
 }
 
-export function useFirstBatchSync(account: AuthAccount | null): { runSyncCycle: () => Promise<void> } {
+export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string): { runSyncCycle: () => Promise<void> } {
   const [{ client, error: clientError }] = React.useState<ClientState>(() => {
     try {
       return { client: createSupabaseBrowserClient(), error: null };
@@ -73,7 +73,7 @@ export function useFirstBatchSync(account: AuthAccount | null): { runSyncCycle: 
       blockedRef.current = accountId ? isFirstBatchUploadBlocked(accountId) : false;
     }
     void runSyncCycle();
-  }, [accountId, deviceId, runSyncCycle]);
+  }, [accountId, deviceId, routeKey, runSyncCycle]);
 
   React.useEffect(() => {
     const schedule = () => {
@@ -91,15 +91,21 @@ export function useFirstBatchSync(account: AuthAccount | null): { runSyncCycle: 
     };
     const handleOnline = () => void runSyncCycle();
     const handleOffline = () => setSharedSyncState({ status: "offline", online: false, lastError: null });
+    const handleFocus = () => void runSyncCycle();
+    const handleVisibilityChange = () => { if (document.visibilityState === "visible") void runSyncCycle(); };
     window.addEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       window.removeEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
   }, [runSyncCycle]);

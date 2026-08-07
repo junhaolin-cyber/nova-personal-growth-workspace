@@ -11,10 +11,11 @@ import type { NewsSavedArticle } from "@/features/news/types";
 import { readTrendLifeState, writeTrendLifeState } from "@/features/trend-life/storage";
 import type { TrendLifeState } from "@/features/trend-life/types";
 import { hasCompletedFirstBatchMigration } from "@/features/migration/firstBatch/storage";
-import { enqueueSyncOperation } from "./engine";
+import { notifyFirstBatchRemoteMerged } from "./events";
+import { enqueueSyncOperation, removeSyncOperations } from "./engine";
 import { compareVersionedSnapshots } from "./conflict";
 import { isNetworkOnline } from "./network";
-import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
+import { readSyncQueue } from "./storage";
 import type { SyncQueueItem } from "./types";
 
 export const FIRST_BATCH_MODULES = ["movies-tv", "food", "news", "trend-life"] as const;
@@ -271,6 +272,7 @@ export async function pullAndMergeFirstBatch(client: SupabaseClient<Database>, u
     applicable.push(row);
   }
   mergeRows(applicable);
+  if (applicable.length > 0) notifyFirstBatchRemoteMerged();
   const afterLocal = new Map(scanLocalFirstBatchRecords().map((record) => [record.key, record]));
   for (const row of rows) {
     const key = recordKey(row.module as FirstBatchSyncModule, row.item_type as FirstBatchItemType, row.entity_id);
@@ -365,7 +367,12 @@ export async function pushFirstBatchQueue(client: SupabaseClient<Database>, user
   let failed = 0;
   for (const item of queue) {
     try {
-      if (await pushOne(client, userId, item)) uploaded += 1;
+      if (await pushOne(client, userId, item)) {
+        uploaded += 1;
+        removeSyncOperations([item.id]);
+      } else {
+        failed += 1;
+      }
     } catch {
       failed += 1;
     }
@@ -377,10 +384,9 @@ export type FirstBatchSyncResult = { queueSize: number; failed: number };
 
 export async function runFirstBatchSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string, allowLocalUpload: boolean): Promise<FirstBatchSyncResult> {
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
-  await pullAndMergeFirstBatch(client, userId);
   if (allowLocalUpload) enqueueLocalFirstBatchChanges(deviceId);
   const pushed = allowLocalUpload ? await pushFirstBatchQueue(client, userId) : { uploaded: 0, failed: 0 };
-  if (pushed.uploaded > 0) await pullAndMergeFirstBatch(client, userId);
+  await pullAndMergeFirstBatch(client, userId);
   return { queueSize: readSyncQueue().length, failed: pushed.failed };
 }
 

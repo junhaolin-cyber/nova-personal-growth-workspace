@@ -12,6 +12,7 @@ import { NewsCollections, NewsSearch, NewsSourceManager, TopStories, TrendingTop
 import { loadNewsCache, loadNewsState, saveNewsCache, saveNewsState } from "./storage";
 import { NEWS_CATEGORIES, type NewsApiResponse, type NewsArticle, type NewsCategory, type NewsClientState, type NewsEvent } from "./types";
 import { isSameDay, sortArticles } from "./utils";
+import { FIRST_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 type CollectionMode = "feed" | "favorites" | "history" | "tracking" | "sources";
 
@@ -36,6 +37,11 @@ export function NewsPage() {
     const nextState = loadNewsState();
     setState(nextState);
     setHydrated(true);
+  }, []);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => setState(loadNewsState());
+    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
   }, []);
 
   React.useEffect(() => {

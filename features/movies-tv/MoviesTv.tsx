@@ -7,6 +7,7 @@ import { readMoviesTvState, writeMoviesTvState } from "./storage";
 import type { MediaDetail, MediaItem, MediaView, MoviesTvState, WatchRecord, WatchStatus } from "./types";
 import { MediaCard } from "./components/MediaCard";
 import { MediaDetailPanel } from "./components/MediaDetailPanel";
+import { FIRST_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 const viewTabs: Array<{ id: MediaView; label: string }> = [
   { id: "today", label: "今日推荐" },
@@ -51,6 +52,11 @@ export function MoviesTv() {
   const selectedRecord = selected ? state.watchRecords.find((record) => record.mediaId === selected.id) : undefined;
 
   React.useEffect(() => { setState(readMoviesTvState()); setHydrated(true); }, []);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => setState(readMoviesTvState());
+    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, []);
   React.useEffect(() => { if (hydrated) writeMoviesTvState(state); }, [hydrated, state]);
 
   React.useEffect(() => {

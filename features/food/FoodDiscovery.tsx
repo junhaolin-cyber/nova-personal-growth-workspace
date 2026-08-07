@@ -10,6 +10,7 @@ import { VisitForm, type VisitInput } from "./components/VisitForm";
 import { createFoodAnalysis, enrichRestaurantFromOfficialUrl, getRestaurantDetails, searchLocalRestaurants, searchRestaurants } from "./service";
 import { createDefaultFoodState, loadFoodState, saveFoodState } from "./storage";
 import type { FoodDiscoveryState, RestaurantRecord, RestaurantSearchInput } from "./types";
+import { FIRST_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 export function FoodDiscovery() {
   const [state, setState] = React.useState<FoodDiscoveryState>(() => createDefaultFoodState());
@@ -22,6 +23,11 @@ export function FoodDiscovery() {
   const [isHydrated, setIsHydrated] = React.useState(false);
 
   React.useEffect(() => { const nextState = loadFoodState(); setState(nextState); setSelectedId(nextState.restaurants[0]?.id); setIsHydrated(true); }, []);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => setState(loadFoodState());
+    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, []);
   React.useEffect(() => { if (isHydrated) saveFoodState(state); }, [isHydrated, state]);
   React.useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3200); return () => window.clearTimeout(timer); }, [notice]);
 

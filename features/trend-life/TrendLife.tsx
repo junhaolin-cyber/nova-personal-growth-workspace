@@ -9,6 +9,7 @@ import type { TrendBrand, TrendItem, TrendLifeState, TrendLifeView } from "./typ
 import { TrendBrandCard } from "./components/TrendBrandCard";
 import { TrendLifeCard } from "./components/TrendLifeCard";
 import { TrendThemeCard } from "./components/TrendThemeCard";
+import { FIRST_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
 
 const viewTabs: Array<{ id: TrendLifeView; label: string }> = [
   { id: "overview", label: "今日潮流" },
@@ -83,6 +84,11 @@ export function TrendLife() {
   React.useEffect(() => {
     setState(readTrendLifeState());
     setHydrated(true);
+  }, []);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => setState(readTrendLifeState());
+    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
   }, []);
 
   React.useEffect(() => {

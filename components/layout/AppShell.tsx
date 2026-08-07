@@ -44,7 +44,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState(true);
   const auth = useAuthAccount();
-  const firstBatchSync = useFirstBatchSync(auth.account);
+  const firstBatchSync = useFirstBatchSync(auth.account, pathname);
   const sync = useSyncStatus(auth.account, firstBatchSync.runSyncCycle);
   const firstBatchMigration = useFirstBatchMigration(auth.account);
   const active = activeModule ?? (pathname === "/" ? "dashboard" : pathname.slice(1));
