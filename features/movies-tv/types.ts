@@ -11,6 +11,7 @@ export type MediaItem = {
   title: string;
   originalTitle?: string;
   posterUrl?: string;
+  backdropUrl?: string;
   releaseDate?: string;
   country?: string;
   genres: string[];

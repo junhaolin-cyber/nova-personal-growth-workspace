@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "default", title: "NOVA" },
 };
 
-export const viewport: Viewport = { themeColor: "#f6f7f9" };
+export const viewport: Viewport = { themeColor: "#f6f7f9", viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="zh-CN"><body><ServiceWorkerRegister />{children}</body></html>;

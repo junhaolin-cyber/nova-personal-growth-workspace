@@ -4,10 +4,12 @@ import type { MediaItem, WatchStatus } from "../types";
 type MediaCardProps = { item: MediaItem; isFavorite: boolean; isWatched: boolean; watchStatus?: WatchStatus; onFavorite: () => void; onOpen: () => void };
 
 export function MediaCard({ item, isFavorite, isWatched, watchStatus, onFavorite, onOpen }: MediaCardProps) {
+  const imageUrl = item.posterUrl ?? item.backdropUrl;
+  const hasPoster = Boolean(item.posterUrl);
   return (
     <article onClick={onOpen} className="group cursor-pointer rounded-[24px] border border-line bg-white p-3 shadow-card transition hover:-translate-y-0.5 hover:border-[#C9C8FA] hover:shadow-lg sm:p-4">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-[18px] bg-[#F6F3FF] bg-cover bg-center sm:aspect-auto sm:h-[240px]" style={{ backgroundImage: `url(${item.posterUrl ?? "/media-poster-placeholder.svg"})` }}>
-        {!item.posterUrl ? <div className="grid h-full place-items-center text-[#8D87B6]"><Clapperboard size={34} /></div> : null}
+      <div className={`relative overflow-hidden rounded-[18px] bg-[#F6F3FF] bg-contain bg-center bg-no-repeat sm:aspect-auto sm:h-[240px] sm:bg-cover ${hasPoster ? "aspect-[2/3]" : "aspect-[16/9]"}`} style={{ backgroundImage: `url(${imageUrl ?? "/media-poster-placeholder.svg"})` }}>
+        {!imageUrl ? <div className="grid h-full place-items-center text-[#8D87B6]"><Clapperboard size={34} /></div> : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/5" />
         <div className="absolute left-3 top-3 hidden gap-2 sm:flex"><span className="rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold text-ink">{item.mediaType === "tv" ? "剧集" : "电影"}</span>{isWatched ? <span className="rounded-full bg-[#DDF1E5]/90 px-2.5 py-1 text-[11px] font-bold text-[#397A52]">已看</span> : null}</div>
         <button type="button" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFavorite ? `取消收藏 ${item.title}` : `收藏 ${item.title}`} className={`absolute right-3 top-3 grid size-11 place-items-center rounded-xl bg-white/85 transition hover:bg-white sm:size-9 ${isFavorite ? "text-accent" : "text-muted"}`}><Bookmark size={16} fill={isFavorite ? "currentColor" : "none"} /></button>
