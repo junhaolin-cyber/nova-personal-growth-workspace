@@ -147,9 +147,9 @@ function NavigationList({ active, isZh, onNavigate }: { active: string; isZh: bo
 }
 
 function MobileNavigation({ active, isZh, onClose }: { active: string; isZh: boolean; onClose: () => void }) {
-  return <div className="fixed inset-0 z-30 lg:hidden" role="dialog" aria-modal="true" aria-label="移动端导航">
-    <button type="button" className="absolute inset-0 bg-ink/20" onClick={onClose} aria-label="关闭导航遮罩" />
-    <aside className="relative flex h-full w-[min(21rem,86vw)] flex-col border-r border-[#C9CCDE] bg-[#DCDDED] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] shadow-2xl">
+  return <div className="fixed inset-0 z-[100] isolate overflow-hidden lg:hidden" role="dialog" aria-modal="true" aria-label="移动端导航">
+    <button type="button" className="absolute inset-0 z-0 bg-ink/20" onClick={onClose} aria-label="关闭导航遮罩" />
+    <aside className="relative z-10 flex h-full w-[min(21rem,86vw)] flex-col border-r border-[#C9CCDE] bg-[#DCDDED] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] shadow-2xl">
       <div className="mb-8 flex items-center justify-between">
         <Link href="/" onClick={onClose} className="flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span><span className="text-[17px] font-extrabold">NOVA</span></Link>
         <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-xl bg-white/70 text-muted" aria-label="关闭导航"><X size={18} /></button>

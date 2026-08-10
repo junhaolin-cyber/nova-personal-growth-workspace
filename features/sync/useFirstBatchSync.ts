@@ -54,13 +54,30 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       setSharedSyncState({ status: "syncing", online: true, cloud: "unknown", lastError: null });
       applyingRemoteRef.current = true;
       try {
-        const firstBatchResult = await runFirstBatchSyncCycle(client, accountId, deviceId, !blockedRef.current);
-        const secondBatchResult = await runSecondBatchSyncCycle(client, accountId, deviceId);
-        const thirdBatchResult = await runThirdBatchSyncCycle(client, accountId, deviceId);
+        let firstBatchResult = { queueSize: 0, failed: 0 };
+        let secondBatchResult = { queueSize: 0, failed: 0 };
+        let thirdBatchResult = { queueSize: 0, failed: 0 };
+        let failedBatches = 0;
+
+        try {
+          firstBatchResult = await runFirstBatchSyncCycle(client, accountId, deviceId, !blockedRef.current);
+        } catch {
+          failedBatches += 1;
+        }
+        try {
+          secondBatchResult = await runSecondBatchSyncCycle(client, accountId, deviceId);
+        } catch {
+          failedBatches += 1;
+        }
+        try {
+          thirdBatchResult = await runThirdBatchSyncCycle(client, accountId, deviceId);
+        } catch {
+          failedBatches += 1;
+        }
         const queueSize = readSyncQueue().length;
-        const failed = firstBatchResult.failed + secondBatchResult.failed + thirdBatchResult.failed;
+        const failed = firstBatchResult.failed + secondBatchResult.failed + thirdBatchResult.failed + failedBatches;
         const result = { queueSize, failed };
-        setSharedSyncState({ status: result.queueSize ? "pending" : "synced", online: true, cloud: "connected", lastSyncedAt: result.queueSize ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: result.failed ? "部分资料等待下一次联网重试。" : null });
+        setSharedSyncState({ status: result.queueSize || result.failed ? "pending" : "synced", online: true, cloud: result.failed ? "unavailable" : "connected", lastSyncedAt: result.queueSize || result.failed ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: result.failed ? "部分资料等待下一次联网重试。" : null });
       } catch (error) {
         setSharedSyncState({ status: "failed", online: true, cloud: "unavailable", lastError: error instanceof Error ? error.message : "云同步暂时失败，请稍后重试。" });
       } finally {

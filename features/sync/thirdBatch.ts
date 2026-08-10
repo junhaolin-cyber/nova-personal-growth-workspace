@@ -112,6 +112,28 @@ function signature(payload: Record<string, Json>): string {
   return JSON.stringify(payload);
 }
 
+function isDefaultEnglishSettings(payload: Record<string, Json>): boolean {
+  return payloadNumber(payload, "dailyWordCount") === 10 && payloadString(payload, "accent") === "us";
+}
+
+function isDefaultSpeakingSettings(payload: Record<string, Json>): boolean {
+  return payloadString(payload, "level") === defaultSpeakingSettings.level
+    && payloadString(payload, "accent") === defaultSpeakingSettings.accent
+    && payloadString(payload, "responseSpeed") === defaultSpeakingSettings.responseSpeed
+    && payloadBoolean(payload, "showTranslation") === defaultSpeakingSettings.showTranslation
+    && payloadBoolean(payload, "autoRead") === defaultSpeakingSettings.autoRead
+    && payloadNumber(payload, "dailyGoalMinutes") === defaultSpeakingSettings.dailyGoalMinutes
+    && payloadBoolean(payload, "showFeedback") === defaultSpeakingSettings.showFeedback;
+}
+
+function shouldPreserveUntrackedLocal(record: LocalRecord): boolean {
+  if (record.itemType === "english-settings") return !isDefaultEnglishSettings(record.payload);
+  if (record.itemType === "speaking-settings") return !isDefaultSpeakingSettings(record.payload);
+  if (record.itemType === "english-daily-plan") return Boolean(record.payload.startedAt || record.payload.completedAt || (Array.isArray(record.payload.completedWordIds) && record.payload.completedWordIds.length > 0));
+  if (record.itemType === "english-learning-record") return Boolean(record.payload.learnedCount || record.payload.masteredCount || record.payload.reviewedCount || record.payload.durationMinutes || record.payload.targetCompleted);
+  return true;
+}
+
 function createLocalRecord(module: ThirdBatchModule, itemType: ThirdBatchItemType, entityId: string, payload: Record<string, Json>, sourceStorageKey: string, clientCreatedAt: string, clientUpdatedAt?: string): LocalRecord {
   return { key: recordKey(module, itemType, entityId), module, itemType, entityId, payload, sourceStorageKey, clientCreatedAt, clientUpdatedAt };
 }
@@ -401,7 +423,8 @@ export async function pullAndMergeThirdBatch(client: SupabaseClient<Database>, u
     const key = envelopeKey(envelope);
     const previous = metadata[key];
     if (previous && compareVersionedSnapshots(rowSnapshot(envelope.row), previous) < 0) return;
-    if (!previous && local.has(key) && !envelope.row.deleted_at) { skippedLocalKeys.add(key); return; }
+    const localRecord = local.get(key);
+    if (!previous && localRecord && !envelope.row.deleted_at && shouldPreserveUntrackedLocal(localRecord)) { skippedLocalKeys.add(key); return; }
     applicable.push(envelope);
   });
 
@@ -582,6 +605,8 @@ export type ThirdBatchSyncResult = { queueSize: number; failed: number };
 
 export async function runThirdBatchSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<ThirdBatchSyncResult> {
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
+  // Pull before the first local scan so a new device's default settings do not overwrite existing cloud data.
+  await pullAndMergeThirdBatch(client, userId);
   enqueueLocalThirdBatchChanges(deviceId);
   const pushed = await pushThirdBatchQueue(client, userId);
   await pullAndMergeThirdBatch(client, userId);
