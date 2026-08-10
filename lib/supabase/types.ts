@@ -103,6 +103,86 @@ type ThirdBatchTables = {
   }>;
 };
 
+type FinanceBatchBaseRow = {
+  id: string;
+  user_id: string;
+  local_id: string;
+  source_device_id: string | null;
+  source_storage_key: string;
+  version: number;
+  client_created_at: string;
+  client_updated_at: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type FinanceBatchTable<Row extends FinanceBatchBaseRow> = {
+  Row: Row;
+  Insert: Partial<Row> & Pick<Row, "user_id" | "local_id" | "client_created_at" | "client_updated_at">;
+  Update: Partial<Row>;
+  Relationships: [];
+};
+
+type FinanceBatchTables = {
+  finance_learning_settings: FinanceBatchTable<FinanceBatchBaseRow & {
+    level: string;
+    goal: string;
+    daily_minutes: number;
+    show_brief: boolean;
+    practice_required: boolean;
+    risk_reminders: boolean;
+    preferred_category: string;
+  }>;
+  finance_daily_plans: FinanceBatchTable<FinanceBatchBaseRow & {
+    plan_date: string;
+    knowledge_ids: Json;
+    review_knowledge_ids: Json;
+    completed_knowledge_ids: Json;
+    completed_quiz_ids: Json;
+    started_at: string | null;
+    completed_at: string | null;
+  }>;
+  finance_knowledge_progress: FinanceBatchTable<FinanceBatchBaseRow & {
+    knowledge_id: string;
+    status: string;
+    first_learned_at: string | null;
+    last_studied_at: string | null;
+    next_review_at: string | null;
+    review_count: number;
+    correct_count: number;
+    wrong_count: number;
+    completed_count: number;
+    is_favorite: boolean;
+  }>;
+  finance_learning_records: FinanceBatchTable<FinanceBatchBaseRow & {
+    record_date: string;
+    learned_count: number;
+    completed_count: number;
+    review_count: number;
+    correct_rate: number;
+    study_minutes: number;
+    target_completed: boolean;
+  }>;
+  finance_favorites: FinanceBatchTable<FinanceBatchBaseRow & {
+    favorite_type: string;
+    item_title: string;
+    created_at_client: string;
+  }>;
+  finance_reflections: FinanceBatchTable<FinanceBatchBaseRow & {
+    reflection_date: string;
+    content: string;
+    reflection_updated_at: string;
+  }>;
+  finance_quiz_attempts: FinanceBatchTable<FinanceBatchBaseRow & {
+    attempt_date: string;
+    knowledge_id: string;
+    question_id: string;
+    selected_answer: string;
+    is_correct: boolean;
+  }>;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -443,7 +523,7 @@ export type Database = {
         };
         Relationships: [];
       };
-    } & ThirdBatchTables;
+    } & ThirdBatchTables & FinanceBatchTables;
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;

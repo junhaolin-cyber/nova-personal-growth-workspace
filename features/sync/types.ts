@@ -6,7 +6,9 @@ export type SyncOperation = "upsert" | "delete";
 
 export type SyncItemType = "favorite" | "status" | "task" | "exercise-type" | "exercise-record"
   | "english-settings" | "english-word-progress" | "english-daily-plan" | "english-learning-record" | "english-recommendation"
-  | "speaking-settings" | "speaking-session" | "speaking-expression" | "speaking-draft";
+  | "speaking-settings" | "speaking-session" | "speaking-expression" | "speaking-draft"
+  | "finance-settings" | "finance-daily-plan" | "finance-progress" | "finance-learning-record"
+  | "finance-favorite" | "finance-reflection" | "finance-quiz-attempt";
 export type SyncItemState = "favorite" | "completed" | "want" | "visited" | "active";
 
 export type SyncQueueItem = {

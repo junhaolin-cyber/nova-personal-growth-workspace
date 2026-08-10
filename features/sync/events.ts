@@ -7,6 +7,8 @@ export const SECOND_BATCH_STORAGE_CHANGED_EVENT = "nova:second-batch-storage-cha
 export const SECOND_BATCH_REMOTE_MERGED_EVENT = "nova:second-batch-remote-merged";
 export const THIRD_BATCH_STORAGE_CHANGED_EVENT = "nova:third-batch-storage-changed";
 export const THIRD_BATCH_REMOTE_MERGED_EVENT = "nova:third-batch-remote-merged";
+export const FOURTH_BATCH_STORAGE_CHANGED_EVENT = "nova:fourth-batch-storage-changed";
+export const FOURTH_BATCH_REMOTE_MERGED_EVENT = "nova:fourth-batch-remote-merged";
 
 export type FirstBatchStorageModule = "movies-tv" | "food" | "news" | "trend-life";
 
@@ -48,4 +50,14 @@ export function notifyThirdBatchStorageChanged(module: "english" | "speaking"): 
 export function notifyThirdBatchRemoteMerged(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(THIRD_BATCH_REMOTE_MERGED_EVENT));
+}
+
+export function notifyFourthBatchStorageChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(FOURTH_BATCH_STORAGE_CHANGED_EVENT));
+}
+
+export function notifyFourthBatchRemoteMerged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(FOURTH_BATCH_REMOTE_MERGED_EVENT));
 }

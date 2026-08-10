@@ -3,12 +3,13 @@
 import * as React from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AuthAccount } from "@/features/auth/types";
-import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, FIRST_BATCH_SYNC_REQUESTED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT, THIRD_BATCH_STORAGE_CHANGED_EVENT } from "./events";
+import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, FIRST_BATCH_SYNC_REQUESTED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT, THIRD_BATCH_STORAGE_CHANGED_EVENT, FOURTH_BATCH_STORAGE_CHANGED_EVENT } from "./events";
 import { isNetworkOnline } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
 import { enqueueLocalFirstBatchChanges, isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
 import { enqueueLocalSecondBatchChanges, runSecondBatchSyncCycle } from "./secondBatch";
 import { enqueueLocalThirdBatchChanges, runThirdBatchSyncCycle } from "./thirdBatch";
+import { enqueueLocalFourthBatchChanges, runFourthBatchSyncCycle } from "./fourthBatch";
 
 type ClientState = { client: ReturnType<typeof createSupabaseBrowserClient> | null; error: string | null };
 
@@ -48,6 +49,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
         if (!blockedRef.current) enqueueLocalFirstBatchChanges(deviceId);
         enqueueLocalSecondBatchChanges(deviceId);
         enqueueLocalThirdBatchChanges(deviceId);
+        enqueueLocalFourthBatchChanges(deviceId);
         setSharedSyncState({ status: "offline", online: false, lastError: null });
         return;
       }
@@ -57,6 +59,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
         let firstBatchResult = { queueSize: 0, failed: 0 };
         let secondBatchResult = { queueSize: 0, failed: 0 };
         let thirdBatchResult = { queueSize: 0, failed: 0 };
+        let fourthBatchResult = { queueSize: 0, failed: 0 };
         let failedBatches = 0;
 
         try {
@@ -74,8 +77,13 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
         } catch {
           failedBatches += 1;
         }
+        try {
+          fourthBatchResult = await runFourthBatchSyncCycle(client, accountId, deviceId);
+        } catch {
+          failedBatches += 1;
+        }
         const queueSize = readSyncQueue().length;
-        const failed = firstBatchResult.failed + secondBatchResult.failed + thirdBatchResult.failed + failedBatches;
+        const failed = firstBatchResult.failed + secondBatchResult.failed + thirdBatchResult.failed + fourthBatchResult.failed + failedBatches;
         const result = { queueSize, failed };
         setSharedSyncState({ status: result.queueSize || result.failed ? "pending" : "synced", online: true, cloud: result.failed ? "unavailable" : "connected", lastSyncedAt: result.queueSize || result.failed ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: result.failed ? "部分资料等待下一次联网重试。" : null });
       } catch (error) {
@@ -123,6 +131,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
     window.addEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(THIRD_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
+    window.addEventListener(FOURTH_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
     window.addEventListener(FIRST_BATCH_SYNC_REQUESTED_EVENT, handleSyncRequested);
     window.addEventListener("online", handleOnline);
@@ -133,6 +142,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       window.removeEventListener(FIRST_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(THIRD_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
+      window.removeEventListener(FOURTH_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
       window.removeEventListener(FIRST_BATCH_SYNC_REQUESTED_EVENT, handleSyncRequested);
       window.removeEventListener("online", handleOnline);

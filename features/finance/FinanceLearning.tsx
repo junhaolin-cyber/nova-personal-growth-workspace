@@ -20,6 +20,7 @@ import { updateFinanceProgress, markQuizResult } from "./review";
 import { buildFinanceHistory, getFinanceStats } from "./stats";
 import { createDefaultFinanceState, loadFinanceState, saveFinanceState } from "./storage";
 import type { FinanceLearningState, FinanceKnowledgeStatus, FinanceReflection } from "./types";
+import { FOURTH_BATCH_REMOTE_MERGED_EVENT, notifyFourthBatchStorageChanged } from "@/features/sync/events";
 
 function getBriefForDate(date: string) {
   const offset = Array.from(date).reduce((sum, character) => sum + character.charCodeAt(0), 0);
@@ -42,7 +43,17 @@ export function FinanceLearning() {
     setIsHydrated(true);
   }, [today]);
 
-  React.useEffect(() => { if (isHydrated) saveFinanceState(state); }, [isHydrated, state]);
+  React.useEffect(() => { if (isHydrated) { saveFinanceState(state); notifyFourthBatchStorageChanged(); } }, [isHydrated, state]);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => {
+      const stored = loadFinanceState();
+      const plan = createFinanceDailyPlan(financeKnowledge, stored, today, stored.settings);
+      setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
+      setCurrentIndex((index) => Math.min(index, Math.max(0, plan.knowledgeIds.length - 1)));
+    };
+    window.addEventListener(FOURTH_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FOURTH_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, [today]);
   React.useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3000); return () => window.clearTimeout(timer); }, [notice]);
 
   if (!isHydrated) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备理财学习内容…</div>;
@@ -119,6 +130,6 @@ export function FinanceLearning() {
     <FinanceLibrary knowledge={financeKnowledge} progress={state.progress} onSelect={(id) => { const index = plan.knowledgeIds.indexOf(id); if (index >= 0) setCurrentIndex(index); else setNotice("这个知识点不在今天任务中，可先在知识库修改学习状态。"); }} onStatus={handleLibraryStatus} onFavorite={handleFavorite} />
     <FinanceHistory history={state.history} currentStreak={stats.currentStreak} longestStreak={stats.longestStreak} totalStudyMinutes={stats.totalStudyMinutes} totalCompletedKnowledge={stats.totalCompletedKnowledge} onClear={handleClearHistory} />
     <FinanceSettings settings={state.settings} onChange={(settings) => setState((current) => ({ ...current, settings }))} />
-    <p className="flex items-center justify-center gap-2 pb-4 text-xs text-muted"><Sparkles size={14} className="text-[#7567B6]" />理财学习数据保存在当前设备浏览器中，后续可独立接入云端同步。</p>
+    <p className="flex items-center justify-center gap-2 pb-4 text-xs text-muted"><Sparkles size={14} className="text-[#7567B6]" />理财学习优先保存在当前设备，登录后会按同步状态安全备份。</p>
   </div>;
 }
