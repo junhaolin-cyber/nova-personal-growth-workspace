@@ -183,6 +183,58 @@ type FinanceBatchTables = {
   }>;
 };
 
+type BookkeepingBatchBaseRow = {
+  id: string;
+  user_id: string;
+  local_id: string;
+  source_device_id: string | null;
+  source_storage_key: string;
+  version: number;
+  client_created_at: string;
+  client_updated_at: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type BookkeepingBatchTable<Row extends BookkeepingBatchBaseRow> = {
+  Row: Row;
+  Insert: Partial<Row> & Pick<Row, "user_id" | "local_id" | "client_created_at" | "client_updated_at">;
+  Update: Partial<Row>;
+  Relationships: [];
+};
+
+type BookkeepingBatchTables = {
+  bookkeeping_records: BookkeepingBatchTable<BookkeepingBatchBaseRow & {
+    record_type: string;
+    amount: string;
+    category_local_id: string;
+    account_local_id: string;
+    record_date: string;
+    record_time: string;
+    note: string;
+  }>;
+  bookkeeping_categories: BookkeepingBatchTable<BookkeepingBatchBaseRow & {
+    category_type: string;
+    name: string;
+    icon: string;
+    sort_order: number;
+    is_active: boolean;
+  }>;
+  bookkeeping_accounts: BookkeepingBatchTable<BookkeepingBatchBaseRow & {
+    account_type: string;
+    name: string;
+    opening_balance: string;
+    is_active: boolean;
+  }>;
+  bookkeeping_budgets: BookkeepingBatchTable<BookkeepingBatchBaseRow & {
+    budget_month: string;
+    amount: string;
+    category_local_id: string | null;
+    is_active: boolean;
+  }>;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -523,7 +575,7 @@ export type Database = {
         };
         Relationships: [];
       };
-    } & ThirdBatchTables & FinanceBatchTables;
+    } & ThirdBatchTables & FinanceBatchTables & BookkeepingBatchTables;
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;

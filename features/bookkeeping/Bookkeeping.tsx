@@ -15,6 +15,7 @@ import { RecentRecords } from "./components/RecentRecords";
 import { Statistics } from "./components/Statistics";
 import { createDefaultBookkeepingState, loadBookkeepingState, saveBookkeepingState } from "./storage";
 import type { BookkeepingRecord, BookkeepingRecordInput, BookkeepingState } from "./types";
+import { FINAL_FINANCE_REMOTE_MERGED_EVENT, notifyFinalFinanceStorageChanged } from "@/features/sync/events";
 
 export function Bookkeeping() {
   const [today] = React.useState(() => getTodayKey());
@@ -25,7 +26,14 @@ export function Bookkeeping() {
   const [isHydrated, setIsHydrated] = React.useState(false);
 
   React.useEffect(() => { setState(loadBookkeepingState()); setIsHydrated(true); }, []);
-  React.useEffect(() => { if (isHydrated) saveBookkeepingState(state); }, [isHydrated, state]);
+  React.useEffect(() => { if (isHydrated) { saveBookkeepingState(state); notifyFinalFinanceStorageChanged(); } }, [isHydrated, state]);
+  React.useEffect(() => {
+    const handleRemoteMerged = () => {
+      if (!editingRecord) setState(loadBookkeepingState());
+    };
+    window.addEventListener(FINAL_FINANCE_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FINAL_FINANCE_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, [editingRecord]);
   React.useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3000); return () => window.clearTimeout(timer); }, [notice]);
 
   if (!isHydrated) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备你的个人财务数据…</div>;

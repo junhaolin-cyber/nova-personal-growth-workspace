@@ -1,0 +1,397 @@
+"use client";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BookkeepingAccount, BookkeepingCategory, BookkeepingRecord, BookkeepingState } from "@/features/bookkeeping/types";
+import { defaultAccounts, defaultCategories } from "@/features/bookkeeping/mockData";
+import { BOOKKEEPING_STORAGE_KEYS, loadBookkeepingState, saveBookkeepingState } from "@/features/bookkeeping/storage";
+import type { Database, Json } from "@/lib/supabase/types";
+import { compareVersionedSnapshots } from "./conflict";
+import { enqueueSyncOperation, removeSyncOperations } from "./engine";
+import { notifyFinalFinanceRemoteMerged } from "./events";
+import { isNetworkOnline } from "./network";
+import { readSyncQueue } from "./storage";
+import type { SyncQueueItem } from "./types";
+
+export const FINAL_FINANCE_MODULES = ["bookkeeping"] as const;
+export type FinalFinanceModule = (typeof FINAL_FINANCE_MODULES)[number];
+export type FinalFinanceItemType = "bookkeeping-record" | "bookkeeping-category" | "bookkeeping-account" | "bookkeeping-budget";
+
+type RecordRow = Database["public"]["Tables"]["bookkeeping_records"]["Row"];
+type CategoryRow = Database["public"]["Tables"]["bookkeeping_categories"]["Row"];
+type AccountRow = Database["public"]["Tables"]["bookkeeping_accounts"]["Row"];
+type BudgetRow = Database["public"]["Tables"]["bookkeeping_budgets"]["Row"];
+type RowEnvelope =
+  | { table: "bookkeeping_records"; row: RecordRow }
+  | { table: "bookkeeping_categories"; row: CategoryRow }
+  | { table: "bookkeeping_accounts"; row: AccountRow }
+  | { table: "bookkeeping_budgets"; row: BudgetRow };
+
+type LocalRecord = {
+  key: string;
+  module: FinalFinanceModule;
+  itemType: FinalFinanceItemType;
+  entityId: string;
+  payload: Record<string, Json>;
+  sourceStorageKey: string;
+  clientCreatedAt: string;
+  clientUpdatedAt?: string;
+};
+
+type MetadataRecord = {
+  module: FinalFinanceModule;
+  itemType: FinalFinanceItemType;
+  entityId: string;
+  payload: Record<string, Json>;
+  sourceStorageKey: string;
+  clientCreatedAt: string;
+  signature: string;
+  updatedAt: string;
+  version: number;
+  deviceId: string;
+  deletedAt: string | null;
+  localPresence: boolean;
+};
+
+type MetadataMap = Record<string, MetadataRecord>;
+const META_STORAGE_KEY = "nova:sync:final-finance-metadata:v1";
+
+function recordKey(itemType: FinalFinanceItemType, entityId: string): string {
+  return `bookkeeping:${itemType}:${entityId}`;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asJson(value: unknown): Json {
+  return value as Json;
+}
+
+function readMetadata(): MetadataMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(META_STORAGE_KEY) ?? "null");
+    return isObject(parsed) ? parsed as MetadataMap : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMetadata(metadata: MetadataMap): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(META_STORAGE_KEY, JSON.stringify(metadata)); } catch { /* 本地元数据不可用时不阻塞记账 */ }
+}
+
+function payloadString(payload: Record<string, Json> | null | undefined, key: string): string | undefined {
+  const value = payload?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function payloadNumber(payload: Record<string, Json> | null | undefined, key: string): number | undefined {
+  const value = payload?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function payloadBoolean(payload: Record<string, Json> | null | undefined, key: string): boolean | undefined {
+  const value = payload?.[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function normalizeDecimalString(value: string, allowNegative = false): string | null {
+  const trimmed = value.trim();
+  if (!/^-?\d+(?:\.\d{1,4})?$/.test(trimmed)) return null;
+  if (!allowNegative && trimmed.startsWith("-")) return null;
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
+  const [whole, fraction = ""] = unsigned.split(".");
+  const normalizedWhole = whole.replace(/^0+(?=\d)/, "");
+  const normalizedFraction = fraction.replace(/0+$/, "");
+  const result = normalizedFraction ? `${normalizedWhole}.${normalizedFraction}` : normalizedWhole;
+  return negative && result !== "0" ? `-${result}` : result;
+}
+
+function decimalFromNumber(value: number, allowNegative = false): string | null {
+  if (!Number.isFinite(value) || (!allowNegative && value < 0)) return null;
+  return normalizeDecimalString(value.toFixed(4), allowNegative);
+}
+
+function decimalPayload(value: unknown, allowNegative = false): string | null {
+  if (typeof value === "string") return normalizeDecimalString(value, allowNegative);
+  if (typeof value === "number") return decimalFromNumber(value, allowNegative);
+  return null;
+}
+
+function decimalToUiNumber(value: string): number | null {
+  const normalized = normalizeDecimalString(value, true);
+  if (normalized === null) return null;
+  const numberValue = Number(normalized);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function signature(payload: Record<string, Json>): string {
+  return JSON.stringify(payload);
+}
+
+function createLocalRecord(itemType: FinalFinanceItemType, entityId: string, payload: Record<string, Json>, sourceStorageKey: string, clientCreatedAt: string, clientUpdatedAt?: string): LocalRecord {
+  return { key: recordKey(itemType, entityId), module: "bookkeeping", itemType, entityId, payload, sourceStorageKey, clientCreatedAt, clientUpdatedAt };
+}
+
+function scanBookkeeping(): LocalRecord[] {
+  const state = loadBookkeepingState();
+  const records: LocalRecord[] = state.records.map((record: BookkeepingRecord) => createLocalRecord("bookkeeping-record", record.id, {
+    recordType: record.type,
+    amount: decimalFromNumber(record.amount) ?? "0",
+    categoryLocalId: record.categoryId,
+    accountLocalId: record.accountId,
+    recordDate: record.date,
+    recordTime: record.time,
+    note: record.note,
+  }, BOOKKEEPING_STORAGE_KEYS.records, record.createdAt, record.updatedAt));
+
+  state.categories.forEach((category: BookkeepingCategory) => records.push(createLocalRecord("bookkeeping-category", category.id, {
+    categoryType: category.type,
+    name: category.name,
+    icon: category.icon,
+    sortOrder: category.sortOrder,
+    isActive: category.isActive,
+  }, BOOKKEEPING_STORAGE_KEYS.categories, category.createdAt)));
+
+  state.accounts.forEach((account: BookkeepingAccount) => records.push(createLocalRecord("bookkeeping-account", account.id, {
+    accountType: account.type,
+    name: account.name,
+    openingBalance: decimalFromNumber(account.openingBalance, true) ?? "0",
+    isActive: account.isActive,
+  }, BOOKKEEPING_STORAGE_KEYS.accounts, account.createdAt)));
+
+  state.budgets.forEach((budget) => records.push(createLocalRecord("bookkeeping-budget", budget.id, {
+    budgetMonth: budget.month,
+    amount: decimalFromNumber(budget.amount) ?? "0",
+    categoryLocalId: budget.categoryId ?? null,
+    isActive: budget.isActive,
+  }, BOOKKEEPING_STORAGE_KEYS.budgets, budget.updatedAt, budget.updatedAt)));
+  return records;
+}
+
+export function scanLocalFinalFinanceRecords(): LocalRecord[] {
+  return scanBookkeeping();
+}
+
+function isDefaultCategory(record: LocalRecord): boolean {
+  if (record.itemType !== "bookkeeping-category") return false;
+  const item = defaultCategories.find((candidate) => candidate.id === record.entityId);
+  return Boolean(item && item.type === payloadString(record.payload, "categoryType") && item.name === payloadString(record.payload, "name") && item.icon === payloadString(record.payload, "icon") && item.sortOrder === payloadNumber(record.payload, "sortOrder") && item.isActive === payloadBoolean(record.payload, "isActive"));
+}
+
+function isDefaultAccount(record: LocalRecord): boolean {
+  if (record.itemType !== "bookkeeping-account") return false;
+  const item = defaultAccounts.find((candidate) => candidate.id === record.entityId);
+  return Boolean(item && item.type === payloadString(record.payload, "accountType") && item.name === payloadString(record.payload, "name") && item.isActive === payloadBoolean(record.payload, "isActive") && decimalFromNumber(item.openingBalance, true) === payloadString(record.payload, "openingBalance"));
+}
+
+function shouldPreserveUntrackedLocal(record: LocalRecord): boolean {
+  if (record.itemType === "bookkeeping-category") return !isDefaultCategory(record);
+  if (record.itemType === "bookkeeping-account") return !isDefaultAccount(record);
+  return true;
+}
+
+function rowSnapshot(row: RowEnvelope["row"]): { updatedAt: string; version: number; deviceId: string; deletedAt: string | null } {
+  return { updatedAt: row.client_updated_at, version: row.version, deviceId: row.source_device_id ?? "cloud", deletedAt: row.deleted_at };
+}
+
+function envelopeSource(envelope: RowEnvelope): { itemType: FinalFinanceItemType; sourceStorageKey: string } {
+  switch (envelope.table) {
+    case "bookkeeping_records": return { itemType: "bookkeeping-record", sourceStorageKey: BOOKKEEPING_STORAGE_KEYS.records };
+    case "bookkeeping_categories": return { itemType: "bookkeeping-category", sourceStorageKey: BOOKKEEPING_STORAGE_KEYS.categories };
+    case "bookkeeping_accounts": return { itemType: "bookkeeping-account", sourceStorageKey: BOOKKEEPING_STORAGE_KEYS.accounts };
+    case "bookkeeping_budgets": return { itemType: "bookkeeping-budget", sourceStorageKey: BOOKKEEPING_STORAGE_KEYS.budgets };
+  }
+}
+
+function envelopeKey(envelope: RowEnvelope): string {
+  return recordKey(envelopeSource(envelope).itemType, envelope.row.local_id);
+}
+
+function mergeBookkeeping(rows: RowEnvelope[]): boolean {
+  if (!rows.length) return false;
+  const current = loadBookkeepingState();
+  const next: BookkeepingState = {
+    ...current,
+    records: [...current.records],
+    categories: [...current.categories],
+    accounts: [...current.accounts],
+    budgets: [...current.budgets],
+  };
+  rows.forEach((envelope) => {
+    if (envelope.table === "bookkeeping_records") {
+      const row = envelope.row;
+      next.records = row.deleted_at ? next.records.filter((item) => item.id !== row.local_id) : [...next.records.filter((item) => item.id !== row.local_id), {
+        id: row.local_id,
+        type: row.record_type as BookkeepingRecord["type"],
+        amount: decimalToUiNumber(row.amount) ?? 0,
+        categoryId: row.category_local_id,
+        accountId: row.account_local_id,
+        date: row.record_date,
+        time: row.record_time,
+        note: row.note,
+        createdAt: row.client_created_at,
+        updatedAt: row.client_updated_at,
+      }];
+    } else if (envelope.table === "bookkeeping_categories") {
+      const row = envelope.row;
+      next.categories = row.deleted_at ? next.categories.filter((item) => item.id !== row.local_id) : [...next.categories.filter((item) => item.id !== row.local_id), { id: row.local_id, type: row.category_type as BookkeepingCategory["type"], name: row.name, icon: row.icon, sortOrder: row.sort_order, isActive: row.is_active, createdAt: row.client_created_at }];
+    } else if (envelope.table === "bookkeeping_accounts") {
+      const row = envelope.row;
+      next.accounts = row.deleted_at ? next.accounts.filter((item) => item.id !== row.local_id) : [...next.accounts.filter((item) => item.id !== row.local_id), { id: row.local_id, type: row.account_type as BookkeepingAccount["type"], name: row.name, openingBalance: decimalToUiNumber(row.opening_balance) ?? 0, isActive: row.is_active, createdAt: row.client_created_at }];
+    } else {
+      const row = envelope.row;
+      const budget = { id: row.local_id, month: row.budget_month, amount: decimalToUiNumber(row.amount) ?? 0, categoryId: row.category_local_id ?? undefined, isActive: row.is_active, updatedAt: row.client_updated_at };
+      next.budgets = row.deleted_at ? next.budgets.filter((item) => item.id !== row.local_id) : [...next.budgets.filter((item) => item.id !== row.local_id), budget];
+    }
+  });
+  const changed = JSON.stringify(next) !== JSON.stringify(current);
+  if (changed) saveBookkeepingState(next);
+  return changed;
+}
+
+export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>, userId: string): Promise<number> {
+  const results = await Promise.all([
+    client.from("bookkeeping_records").select("*").eq("user_id", userId),
+    client.from("bookkeeping_categories").select("*").eq("user_id", userId),
+    client.from("bookkeeping_accounts").select("*").eq("user_id", userId),
+    client.from("bookkeeping_budgets").select("*").eq("user_id", userId),
+  ]);
+  if (results.some((result) => result.error)) throw new Error("个人财务云端资料暂时无法读取，请稍后重试。");
+  const rows: RowEnvelope[] = [
+    ...(results[0].data ?? []).map((row) => ({ table: "bookkeeping_records" as const, row })),
+    ...(results[1].data ?? []).map((row) => ({ table: "bookkeeping_categories" as const, row })),
+    ...(results[2].data ?? []).map((row) => ({ table: "bookkeeping_accounts" as const, row })),
+    ...(results[3].data ?? []).map((row) => ({ table: "bookkeeping_budgets" as const, row })),
+  ];
+  const metadata = readMetadata();
+  const local = new Map(scanBookkeeping().map((record) => [record.key, record]));
+  const applicable: RowEnvelope[] = [];
+  const skipped = new Set<string>();
+  rows.forEach((envelope) => {
+    const key = envelopeKey(envelope);
+    const previous = metadata[key];
+    if (previous && compareVersionedSnapshots(rowSnapshot(envelope.row), previous) < 0) return;
+    const localRecord = local.get(key);
+    if (!previous && localRecord && !envelope.row.deleted_at && shouldPreserveUntrackedLocal(localRecord)) { skipped.add(key); return; }
+    applicable.push(envelope);
+  });
+  const changed = mergeBookkeeping(applicable);
+  const afterLocal = new Map(scanBookkeeping().map((record) => [record.key, record]));
+  rows.forEach((envelope) => {
+    const key = envelopeKey(envelope);
+    if (skipped.has(key)) return;
+    const previous = metadata[key];
+    if (previous && compareVersionedSnapshots(rowSnapshot(envelope.row), previous) < 0) return;
+    const source = envelopeSource(envelope);
+    const localRecord = afterLocal.get(key);
+    metadata[key] = { module: "bookkeeping", itemType: source.itemType, entityId: envelope.row.local_id, payload: localRecord?.payload ?? {}, sourceStorageKey: localRecord?.sourceStorageKey ?? source.sourceStorageKey, clientCreatedAt: localRecord?.clientCreatedAt ?? envelope.row.client_created_at, signature: signature(localRecord?.payload ?? {}), updatedAt: envelope.row.client_updated_at, version: envelope.row.version, deviceId: envelope.row.source_device_id ?? "cloud", deletedAt: envelope.row.deleted_at, localPresence: Boolean(localRecord) };
+  });
+  writeMetadata(metadata);
+  if (changed) notifyFinalFinanceRemoteMerged();
+  return applicable.length;
+}
+
+export function enqueueLocalFinalFinanceChanges(deviceId: string): number {
+  const local = new Map(scanBookkeeping().map((record) => [record.key, record]));
+  const metadata = readMetadata();
+  let queued = 0;
+  local.forEach((record) => {
+    const previous = metadata[record.key];
+    const nextSignature = signature(record.payload);
+    if (previous && !previous.deletedAt && previous.signature === nextSignature) { previous.localPresence = true; return; }
+    const updatedAt = record.clientUpdatedAt ?? previous?.updatedAt ?? new Date().toISOString();
+    const nextVersion = (previous?.version ?? 0) + 1;
+    metadata[record.key] = { module: "bookkeeping", itemType: record.itemType, entityId: record.entityId, payload: record.payload, sourceStorageKey: record.sourceStorageKey, clientCreatedAt: previous?.clientCreatedAt ?? record.clientCreatedAt, signature: nextSignature, updatedAt, version: nextVersion, deviceId, deletedAt: null, localPresence: true };
+    enqueueSyncOperation({ module: "bookkeeping", itemType: record.itemType, entityId: record.entityId, operation: "upsert", payload: { ...record.payload, clientCreatedAt: previous?.clientCreatedAt ?? record.clientCreatedAt }, sourceStorageKey: record.sourceStorageKey, deletedAt: null, version: nextVersion, deviceId, updatedAt });
+    queued += 1;
+  });
+  Object.values(metadata).forEach((previous) => {
+    const key = recordKey(previous.itemType, previous.entityId);
+    if (previous.module !== "bookkeeping" || !previous.localPresence || local.has(key) || previous.deletedAt) return;
+    const deletedAt = new Date().toISOString();
+    const nextVersion = previous.version + 1;
+    metadata[key] = { ...previous, updatedAt: deletedAt, version: nextVersion, deviceId, deletedAt, localPresence: false };
+    enqueueSyncOperation({ module: "bookkeeping", itemType: previous.itemType, entityId: previous.entityId, operation: "delete", payload: { ...previous.payload, clientCreatedAt: previous.clientCreatedAt }, sourceStorageKey: previous.sourceStorageKey, deletedAt, version: nextVersion, deviceId, updatedAt: deletedAt });
+    queued += 1;
+  });
+  writeMetadata(metadata);
+  return queued;
+}
+
+function itemPayload(item: SyncQueueItem): Record<string, Json> {
+  return (item.payload ?? {}) as Record<string, Json>;
+}
+
+function commonInsert(item: SyncQueueItem, userId: string) {
+  return { user_id: userId, local_id: item.entityId, source_device_id: item.deviceId, source_storage_key: item.sourceStorageKey ?? "", version: item.version, client_created_at: payloadString(itemPayload(item), "clientCreatedAt") ?? new Date().toISOString(), client_updated_at: item.updatedAt, deleted_at: item.deletedAt ?? null };
+}
+
+async function pushOne(client: SupabaseClient<Database>, userId: string, item: SyncQueueItem): Promise<boolean> {
+  const payload = itemPayload(item);
+  const base = commonInsert(item, userId);
+  const snapshot = { updatedAt: item.updatedAt, version: item.version, deviceId: item.deviceId, deletedAt: item.deletedAt ?? null };
+  if (item.itemType === "bookkeeping-record") {
+    const { data: existing, error } = await client.from("bookkeeping_records").select("*").eq("user_id", userId).eq("local_id", item.entityId).maybeSingle();
+    if (error) throw error;
+    if (existing && compareVersionedSnapshots(rowSnapshot(existing), snapshot) > 0) return true;
+    const row: Database["public"]["Tables"]["bookkeeping_records"]["Insert"] = { ...base, record_type: payloadString(payload, "recordType") ?? existing?.record_type ?? "expense", amount: decimalPayload(payload["amount"]) ?? existing?.amount ?? "0", category_local_id: payloadString(payload, "categoryLocalId") ?? existing?.category_local_id ?? "", account_local_id: payloadString(payload, "accountLocalId") ?? existing?.account_local_id ?? "", record_date: payloadString(payload, "recordDate") ?? existing?.record_date ?? new Date().toISOString().slice(0, 10), record_time: payloadString(payload, "recordTime") ?? existing?.record_time ?? "12:00", note: payloadString(payload, "note") ?? existing?.note ?? "" };
+    const result = await client.from("bookkeeping_records").upsert(row, { onConflict: "user_id,local_id" });
+    if (result.error) throw result.error;
+    return true;
+  }
+  if (item.itemType === "bookkeeping-category") {
+    const { data: existing, error } = await client.from("bookkeeping_categories").select("*").eq("user_id", userId).eq("local_id", item.entityId).maybeSingle();
+    if (error) throw error;
+    if (existing && compareVersionedSnapshots(rowSnapshot(existing), snapshot) > 0) return true;
+    const row: Database["public"]["Tables"]["bookkeeping_categories"]["Insert"] = { ...base, category_type: payloadString(payload, "categoryType") ?? existing?.category_type ?? "expense", name: payloadString(payload, "name") ?? existing?.name ?? "未命名分类", icon: payloadString(payload, "icon") ?? existing?.icon ?? "", sort_order: payloadNumber(payload, "sortOrder") ?? existing?.sort_order ?? 0, is_active: payloadBoolean(payload, "isActive") ?? existing?.is_active ?? true };
+    const result = await client.from("bookkeeping_categories").upsert(row, { onConflict: "user_id,local_id" });
+    if (result.error) throw result.error;
+    return true;
+  }
+  if (item.itemType === "bookkeeping-account") {
+    const { data: existing, error } = await client.from("bookkeeping_accounts").select("*").eq("user_id", userId).eq("local_id", item.entityId).maybeSingle();
+    if (error) throw error;
+    if (existing && compareVersionedSnapshots(rowSnapshot(existing), snapshot) > 0) return true;
+    const row: Database["public"]["Tables"]["bookkeeping_accounts"]["Insert"] = { ...base, account_type: payloadString(payload, "accountType") ?? existing?.account_type ?? "other", name: payloadString(payload, "name") ?? existing?.name ?? "未命名账户", opening_balance: decimalPayload(payload["openingBalance"], true) ?? existing?.opening_balance ?? "0", is_active: payloadBoolean(payload, "isActive") ?? existing?.is_active ?? true };
+    const result = await client.from("bookkeeping_accounts").upsert(row, { onConflict: "user_id,local_id" });
+    if (result.error) throw result.error;
+    return true;
+  }
+  const { data: existing, error } = await client.from("bookkeeping_budgets").select("*").eq("user_id", userId).eq("local_id", item.entityId).maybeSingle();
+  if (error) throw error;
+  if (existing && compareVersionedSnapshots(rowSnapshot(existing), snapshot) > 0) return true;
+  const categoryLocalId = payloadString(payload, "categoryLocalId") ?? existing?.category_local_id ?? null;
+  const row: Database["public"]["Tables"]["bookkeeping_budgets"]["Insert"] = { ...base, budget_month: payloadString(payload, "budgetMonth") ?? existing?.budget_month ?? new Date().toISOString().slice(0, 7), amount: decimalPayload(payload["amount"]) ?? existing?.amount ?? "0", category_local_id: categoryLocalId, is_active: payloadBoolean(payload, "isActive") ?? existing?.is_active ?? true };
+  const result = await client.from("bookkeeping_budgets").upsert(row, { onConflict: "user_id,local_id" });
+  if (result.error) throw result.error;
+  return true;
+}
+
+export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, userId: string): Promise<{ uploaded: number; failed: number }> {
+  const queue = readSyncQueue().filter((item) => item.module === "bookkeeping");
+  const uploadedIds: string[] = [];
+  let failed = 0;
+  for (const item of queue) {
+    try {
+      if (item.itemType) await pushOne(client, userId, item);
+      uploadedIds.push(item.id);
+    } catch {
+      failed += 1;
+    }
+  }
+  removeSyncOperations(uploadedIds);
+  return { uploaded: uploadedIds.length, failed };
+}
+
+export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<{ queueSize: number; failed: number }> {
+  if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
+  await pullAndMergeFinalFinance(client, userId);
+  enqueueLocalFinalFinanceChanges(deviceId);
+  const pushed = await pushFinalFinanceQueue(client, userId);
+  await pullAndMergeFinalFinance(client, userId);
+  return { queueSize: readSyncQueue().filter((item) => item.module === "bookkeeping").length, failed: pushed.failed };
+}

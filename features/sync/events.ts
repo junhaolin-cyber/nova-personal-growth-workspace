@@ -9,6 +9,8 @@ export const THIRD_BATCH_STORAGE_CHANGED_EVENT = "nova:third-batch-storage-chang
 export const THIRD_BATCH_REMOTE_MERGED_EVENT = "nova:third-batch-remote-merged";
 export const FOURTH_BATCH_STORAGE_CHANGED_EVENT = "nova:fourth-batch-storage-changed";
 export const FOURTH_BATCH_REMOTE_MERGED_EVENT = "nova:fourth-batch-remote-merged";
+export const FINAL_FINANCE_STORAGE_CHANGED_EVENT = "nova:final-finance-storage-changed";
+export const FINAL_FINANCE_REMOTE_MERGED_EVENT = "nova:final-finance-remote-merged";
 
 export type FirstBatchStorageModule = "movies-tv" | "food" | "news" | "trend-life";
 
@@ -60,4 +62,14 @@ export function notifyFourthBatchStorageChanged(): void {
 export function notifyFourthBatchRemoteMerged(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(FOURTH_BATCH_REMOTE_MERGED_EVENT));
+}
+
+export function notifyFinalFinanceStorageChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(FINAL_FINANCE_STORAGE_CHANGED_EVENT));
+}
+
+export function notifyFinalFinanceRemoteMerged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(FINAL_FINANCE_REMOTE_MERGED_EVENT));
 }

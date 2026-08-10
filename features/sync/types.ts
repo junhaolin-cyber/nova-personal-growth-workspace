@@ -8,7 +8,8 @@ export type SyncItemType = "favorite" | "status" | "task" | "exercise-type" | "e
   | "english-settings" | "english-word-progress" | "english-daily-plan" | "english-learning-record" | "english-recommendation"
   | "speaking-settings" | "speaking-session" | "speaking-expression" | "speaking-draft"
   | "finance-settings" | "finance-daily-plan" | "finance-progress" | "finance-learning-record"
-  | "finance-favorite" | "finance-reflection" | "finance-quiz-attempt";
+  | "finance-favorite" | "finance-reflection" | "finance-quiz-attempt"
+  | "bookkeeping-record" | "bookkeeping-category" | "bookkeeping-account" | "bookkeeping-budget";
 export type SyncItemState = "favorite" | "completed" | "want" | "visited" | "active";
 
 export type SyncQueueItem = {
