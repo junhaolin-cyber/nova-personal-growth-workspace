@@ -64,14 +64,21 @@ export function Speaking() {
       setSettings(stored.settings);
       setSessions(stored.sessions);
       setExpressions(stored.expressions);
-      if (!activeScenarioId && stored.draft) {
-        const draftScenario = speakingScenarios.find((scenario) => scenario.id === stored.draft?.scenarioId);
-        if (draftScenario) {
-          setActiveScenarioId(draftScenario.id);
-          setStartedAt(stored.draft.startedAt);
-          setMessages(stored.draft.messages);
-          setHintLevel(stored.draft.hintLevel);
+      if (stored.draft) {
+        if (!activeScenarioId || stored.draft.scenarioId !== activeScenarioId) {
+          const draftScenario = speakingScenarios.find((scenario) => scenario.id === stored.draft?.scenarioId);
+          if (draftScenario) setActiveScenarioId(draftScenario.id);
         }
+        setStartedAt(stored.draft.startedAt);
+        setMessages(stored.draft.messages);
+        setHintLevel(stored.draft.hintLevel);
+      } else if (activeScenarioId) {
+        // A newer remote tombstone must not be resurrected by the local draft effect.
+        setActiveScenarioId(null);
+        setStartedAt(null);
+        setMessages([]);
+        setHintLevel(0);
+        setElapsedSeconds(0);
       }
     };
     window.addEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
