@@ -318,32 +318,31 @@ function mergeEnglish(rows: RowEnvelope[]): boolean {
   if (!rows.some((envelope) => envelope.table.startsWith("english_"))) return false;
   const current = loadEnglishState();
   const next: EnglishLearningState = { ...current, settings: { ...current.settings }, dailyPlans: { ...current.dailyPlans }, wordProgress: { ...current.wordProgress }, learningRecords: { ...current.learningRecords }, recommendationState: { ...current.recommendationState } };
-  let changed = false;
   rows.forEach((envelope) => {
     if (!envelope.table.startsWith("english_")) return;
     if (envelope.table === "english_learning_settings") {
       const row = envelope.row;
       if (row.deleted_at) next.settings = createDefaultEnglishState().settings;
       else next.settings = { dailyWordCount: row.daily_word_count, accent: row.accent as EnglishLearningState["settings"]["accent"] };
-      changed = true;
     } else if (envelope.table === "english_word_progress") {
       const row = envelope.row;
       if (row.deleted_at) delete next.wordProgress[row.word_id]; else next.wordProgress[row.word_id] = toWordProgress(row);
-      changed = true;
     } else if (envelope.table === "english_daily_plans") {
       const row = envelope.row;
       if (row.deleted_at) delete next.dailyPlans[row.plan_date]; else next.dailyPlans[row.plan_date] = { date: row.plan_date, wordIds: jsonStringArray(row.word_ids), completedWordIds: jsonStringArray(row.completed_word_ids), reviewedWordIds: jsonStringArray(row.reviewed_word_ids), startedAt: row.started_at ?? undefined, completedAt: row.completed_at ?? undefined } satisfies DailyWordPlan;
-      changed = true;
     } else if (envelope.table === "english_learning_records") {
       const row = envelope.row;
       if (row.deleted_at) delete next.learningRecords[row.record_date]; else next.learningRecords[row.record_date] = { date: row.record_date, learnedCount: row.learned_count, masteredCount: row.mastered_count, reviewedCount: row.reviewed_count, correctRate: Number(row.correct_rate), durationMinutes: row.duration_minutes, targetCompleted: row.target_completed } satisfies DailyLearningRecord;
-      changed = true;
     } else if (envelope.table === "english_recommendation_states") {
       const row = envelope.row;
       if (row.deleted_at) delete next.recommendationState[row.recommendation_id]; else next.recommendationState[row.recommendation_id] = { isFavorite: row.is_favorite, isWatched: row.is_watched, lastShownAt: row.last_shown_at ?? undefined } satisfies RecommendationState;
-      changed = true;
     }
   });
+  const changed = JSON.stringify(next.settings) !== JSON.stringify(current.settings)
+    || JSON.stringify(next.dailyPlans) !== JSON.stringify(current.dailyPlans)
+    || JSON.stringify(next.wordProgress) !== JSON.stringify(current.wordProgress)
+    || JSON.stringify(next.learningRecords) !== JSON.stringify(current.learningRecords)
+    || JSON.stringify(next.recommendationState) !== JSON.stringify(current.recommendationState);
   if (changed) saveEnglishState(next);
   return changed;
 }
@@ -370,17 +369,19 @@ function mergeSpeaking(rows: RowEnvelope[]): boolean {
   const next: SpeakingStorageState = { ...current, settings: current.settings, sessions: [...current.sessions], expressions: [...current.expressions], draft: current.draft };
   const sessions = new Map(next.sessions.map((session) => [session.id, session]));
   const expressions = new Map(next.expressions.map((expression) => [expression.id, expression]));
-  let changed = false;
   rows.forEach((envelope) => {
     if (!envelope.table.startsWith("speaking_")) return;
     if (envelope.table === "speaking_settings") { const row = envelope.row; next.settings = row.deleted_at ? defaultSpeakingSettings : toSpeakingSettings(row); }
     if (envelope.table === "speaking_sessions") { const row = envelope.row; if (row.deleted_at) sessions.delete(row.local_id); else sessions.set(row.local_id, toSpeakingSession(row)); }
     if (envelope.table === "speaking_expressions") { const row = envelope.row; if (row.deleted_at) expressions.delete(row.local_id); else expressions.set(row.local_id, toSpeakingExpression(row)); }
     if (envelope.table === "speaking_drafts") { const row = envelope.row; next.draft = row.deleted_at ? null : toSpeakingDraft(row); }
-    changed = true;
   });
   next.sessions = Array.from(sessions.values());
   next.expressions = Array.from(expressions.values());
+  const changed = JSON.stringify(next.settings) !== JSON.stringify(current.settings)
+    || JSON.stringify(next.sessions) !== JSON.stringify(current.sessions)
+    || JSON.stringify(next.expressions) !== JSON.stringify(current.expressions)
+    || JSON.stringify(next.draft) !== JSON.stringify(current.draft);
   if (changed) {
     saveSpeakingSettings(next.settings);
     saveSpeakingSessions(next.sessions);
@@ -428,8 +429,8 @@ export async function pullAndMergeThirdBatch(client: SupabaseClient<Database>, u
     applicable.push(envelope);
   });
 
-  mergeEnglish(applicable);
-  mergeSpeaking(applicable);
+  const englishChanged = mergeEnglish(applicable);
+  const speakingChanged = mergeSpeaking(applicable);
   const afterLocal = new Map(scanLocalThirdBatchRecords().map((record) => [record.key, record]));
   rows.forEach((envelope) => {
     const key = envelopeKey(envelope);
@@ -455,7 +456,7 @@ export async function pullAndMergeThirdBatch(client: SupabaseClient<Database>, u
     };
   });
   writeMetadata(metadata);
-  if (applicable.length > 0) notifyThirdBatchRemoteMerged();
+  if (englishChanged || speakingChanged) notifyThirdBatchRemoteMerged();
   return applicable.length;
 }
 

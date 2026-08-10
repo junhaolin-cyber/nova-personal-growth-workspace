@@ -38,6 +38,6 @@ export function createDailyWordPlan(words: EnglishWord[], state: EnglishLearning
 }
 
 export function getOrCreateDailyPlan(words: EnglishWord[], state: EnglishLearningState, date: string) {
-  return state.dailyPlans[date] ?? createDailyWordPlan(words, state, date, state.settings);
+  const existing = state.dailyPlans[date];
+  return existing?.wordIds.length ? existing : createDailyWordPlan(words, state, date, state.settings);
 }
-

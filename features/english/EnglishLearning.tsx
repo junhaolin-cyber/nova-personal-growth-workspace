@@ -43,7 +43,7 @@ export function EnglishLearning() {
       const stored = loadEnglishState();
       const plan = getOrCreateDailyPlan(englishWords, stored, today);
       setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
-      setCurrentIndex(0);
+      setCurrentIndex((index) => Math.min(index, Math.max(0, plan.wordIds.length - 1)));
     };
     window.addEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
     return () => window.removeEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
