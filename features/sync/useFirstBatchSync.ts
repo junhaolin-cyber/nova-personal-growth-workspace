@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AuthAccount } from "@/features/auth/types";
-import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT, THIRD_BATCH_STORAGE_CHANGED_EVENT } from "./events";
+import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, FIRST_BATCH_SYNC_REQUESTED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT, THIRD_BATCH_STORAGE_CHANGED_EVENT } from "./events";
 import { isNetworkOnline } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
 import { enqueueLocalFirstBatchChanges, isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
@@ -98,6 +98,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       blockedRef.current = false;
       void runSyncCycle();
     };
+    const handleSyncRequested = () => void runSyncCycle();
     const handleOnline = () => void runSyncCycle();
     const handleOffline = () => setSharedSyncState({ status: "offline", online: false, lastError: null });
     const handleFocus = () => void runSyncCycle();
@@ -106,6 +107,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
     window.addEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(THIRD_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
     window.addEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
+    window.addEventListener(FIRST_BATCH_SYNC_REQUESTED_EVENT, handleSyncRequested);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("focus", handleFocus);
@@ -115,6 +117,7 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       window.removeEventListener(SECOND_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(THIRD_BATCH_STORAGE_CHANGED_EVENT, handleStorageChanged);
       window.removeEventListener(FIRST_BATCH_MIGRATION_COMPLETED_EVENT, handleMigrationCompleted);
+      window.removeEventListener(FIRST_BATCH_SYNC_REQUESTED_EVENT, handleSyncRequested);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("focus", handleFocus);

@@ -10,11 +10,26 @@ import { NewsDetail } from "./components/NewsDetail";
 import { NewsOverview } from "./components/NewsOverview";
 import { NewsCollections, NewsSearch, NewsSourceManager, TopStories, TrendingTopics } from "./components/NewsSections";
 import { loadNewsCache, loadNewsState, saveNewsCache, saveNewsState } from "./storage";
-import { NEWS_CATEGORIES, type NewsApiResponse, type NewsArticle, type NewsCategory, type NewsClientState, type NewsEvent } from "./types";
+import { NEWS_CATEGORIES, type NewsApiResponse, type NewsArticle, type NewsCategory, type NewsClientState, type NewsEvent, type NewsSavedArticle } from "./types";
 import { isSameDay, sortArticles } from "./utils";
-import { FIRST_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
+import { FIRST_BATCH_REMOTE_MERGED_EVENT, requestFirstBatchSync } from "@/features/sync/events";
 
 type CollectionMode = "feed" | "favorites" | "history" | "tracking" | "sources";
+
+function createSavedArticleView(savedArticle: NewsSavedArticle): NewsArticle {
+  return {
+    ...savedArticle,
+    normalizedTitle: savedArticle.originalTitle.toLocaleLowerCase(),
+    sourceId: "saved-news",
+    sourceUrl: savedArticle.articleUrl,
+    category: NEWS_CATEGORIES[NEWS_CATEGORIES.length - 1],
+    fetchedAt: savedArticle.savedAt,
+    keywords: [],
+    entities: [],
+    isRead: false,
+    isFavorite: true,
+  };
+}
 
 export function NewsPage() {
   const [state, setState] = React.useState<NewsClientState | null>(null);
@@ -39,12 +54,6 @@ export function NewsPage() {
     setHydrated(true);
   }, []);
   React.useEffect(() => {
-    const handleRemoteMerged = () => setState(loadNewsState());
-    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
-    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
-  }, []);
-
-  React.useEffect(() => {
     if (state) saveNewsState(state);
   }, [state]);
 
@@ -53,6 +62,20 @@ export function NewsPage() {
     const readIds = new Set(nextState.history.map((item) => item.articleId));
     return nextArticles.map((article) => ({ ...article, isFavorite: favoriteIds.has(article.id), isRead: readIds.has(article.id) }));
   }, []);
+
+  React.useEffect(() => {
+    const handleRemoteMerged = () => {
+      const nextState = loadNewsState();
+      setState(nextState);
+      setArticles((current) => applyPersistedState(current, nextState));
+    };
+    window.addEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+    return () => window.removeEventListener(FIRST_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
+  }, [applyPersistedState]);
+
+  React.useEffect(() => {
+    if (hydrated && mode === "favorites") requestFirstBatchSync();
+  }, [hydrated, mode]);
 
   const refresh = React.useCallback(async () => {
     if (!state) return;
@@ -139,10 +162,11 @@ export function NewsPage() {
     if (state.settings.hideRead && article.isRead) return false;
     return true;
   });
-  const favoriteArticles = articles.filter((article) => favoriteIds.has(article.id));
+  const articleById = new Map(articles.map((article) => [article.id, article]));
+  const favoriteArticles = state.favorites.map((savedArticle) => articleById.get(savedArticle.id) ?? createSavedArticleView(savedArticle));
   const todayCount = articles.filter((article) => isSameDay(article.publishedAt)).length;
   const unreadCount = articles.filter((article) => !article.isRead).length;
-  const selectedArticle = selectedArticleId ? articles.find((article) => article.id === selectedArticleId) : undefined;
+  const selectedArticle = selectedArticleId ? articleById.get(selectedArticleId) ?? favoriteArticles.find((article) => article.id === selectedArticleId) : undefined;
   const statusMessage = sourceStatuses.length && sourceStatuses.every((status) => status.ok) ? "来源正常" : sourceStatuses.length ? "部分来源异常" : "等待来源返回";
   const pageSize = Math.max(20, state.settings.pageSize);
 
