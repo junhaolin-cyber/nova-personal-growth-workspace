@@ -71,7 +71,13 @@ function readMetadata(): MetadataMap {
   if (typeof window === "undefined") return {};
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(META_STORAGE_KEY) ?? "null");
-    return isObject(parsed) ? parsed as MetadataMap : {};
+    if (!isObject(parsed)) return {};
+    return Object.entries(parsed).reduce<MetadataMap>((metadata, [key, value]) => {
+      if (!isObject(value)) return metadata;
+      if (value.module !== "bookkeeping" || typeof value.itemType !== "string" || typeof value.entityId !== "string" || typeof value.signature !== "string" || typeof value.updatedAt !== "string" || !Number.isInteger(value.version) || typeof value.deviceId !== "string" || (value.deletedAt !== null && typeof value.deletedAt !== "string") || typeof value.localPresence !== "boolean" || !isObject(value.payload) || typeof value.sourceStorageKey !== "string" || typeof value.clientCreatedAt !== "string") return metadata;
+      metadata[key] = value as unknown as MetadataRecord;
+      return metadata;
+    }, {});
   } catch {
     return {};
   }
@@ -121,8 +127,8 @@ function decimalPayload(value: unknown, allowNegative = false): string | null {
   return null;
 }
 
-function decimalToUiNumber(value: string): number | null {
-  const normalized = normalizeDecimalString(value, true);
+function decimalToUiNumber(value: string | number): number | null {
+  const normalized = typeof value === "number" ? decimalFromNumber(value, true) : normalizeDecimalString(value, true);
   if (normalized === null) return null;
   const numberValue = Number(normalized);
   return Number.isFinite(numberValue) ? numberValue : null;
