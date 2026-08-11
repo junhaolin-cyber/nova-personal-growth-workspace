@@ -198,6 +198,11 @@ function rowSnapshot(row: RowEnvelope["row"]): { updatedAt: string; version: num
   return { updatedAt: row.client_updated_at, version: row.version, deviceId: row.source_device_id ?? "cloud", deletedAt: row.deleted_at };
 }
 
+type FinalFinancePullResult = {
+  pulled: number;
+  failed: number;
+};
+
 function envelopeSource(envelope: RowEnvelope): { itemType: FinalFinanceItemType; sourceStorageKey: string } {
   switch (envelope.table) {
     case "bookkeeping_records": return { itemType: "bookkeeping-record", sourceStorageKey: BOOKKEEPING_STORAGE_KEYS.records };
@@ -253,13 +258,19 @@ function mergeBookkeeping(rows: RowEnvelope[]): boolean {
   return changed;
 }
 
-export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>, userId: string): Promise<number> {
-  const results = await Promise.all([
+export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>, userId: string): Promise<FinalFinancePullResult> {
+  const rawResults = await Promise.all([
     client.from("bookkeeping_records").select("*").eq("user_id", userId),
     client.from("bookkeeping_categories").select("*").eq("user_id", userId),
     client.from("bookkeeping_accounts").select("*").eq("user_id", userId),
     client.from("bookkeeping_budgets").select("*").eq("user_id", userId),
   ]);
+  let failed = 0;
+  const results = rawResults.map((result) => {
+    if (!result.error) return result;
+    failed += 1;
+    return { ...result, data: [], error: null };
+  }) as typeof rawResults;
   if (results.some((result) => result.error)) throw new Error("个人财务云端资料暂时无法读取，请稍后重试。");
   const rows: RowEnvelope[] = [
     ...(results[0].data ?? []).map((row) => ({ table: "bookkeeping_records" as const, row })),
@@ -292,7 +303,7 @@ export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>,
   });
   writeMetadata(metadata);
   if (changed) notifyFinalFinanceRemoteMerged();
-  return applicable.length;
+  return { pulled: applicable.length, failed };
 }
 
 export function enqueueLocalFinalFinanceChanges(deviceId: string): number {
@@ -303,7 +314,7 @@ export function enqueueLocalFinalFinanceChanges(deviceId: string): number {
     const previous = metadata[record.key];
     const nextSignature = signature(record.payload);
     if (previous && !previous.deletedAt && previous.signature === nextSignature) { previous.localPresence = true; return; }
-    const updatedAt = record.clientUpdatedAt ?? previous?.updatedAt ?? new Date().toISOString();
+    const updatedAt = record.clientUpdatedAt ?? (previous && previous.signature !== nextSignature ? new Date().toISOString() : previous?.updatedAt ?? new Date().toISOString());
     const nextVersion = (previous?.version ?? 0) + 1;
     metadata[record.key] = { module: "bookkeeping", itemType: record.itemType, entityId: record.entityId, payload: record.payload, sourceStorageKey: record.sourceStorageKey, clientCreatedAt: previous?.clientCreatedAt ?? record.clientCreatedAt, signature: nextSignature, updatedAt, version: nextVersion, deviceId, deletedAt: null, localPresence: true };
     enqueueSyncOperation({ module: "bookkeeping", itemType: record.itemType, entityId: record.entityId, operation: "upsert", payload: { ...record.payload, clientCreatedAt: previous?.clientCreatedAt ?? record.clientCreatedAt }, sourceStorageKey: record.sourceStorageKey, deletedAt: null, version: nextVersion, deviceId, updatedAt });
@@ -326,13 +337,13 @@ function itemPayload(item: SyncQueueItem): Record<string, Json> {
   return (item.payload ?? {}) as Record<string, Json>;
 }
 
-function commonInsert(item: SyncQueueItem, userId: string) {
-  return { user_id: userId, local_id: item.entityId, source_device_id: item.deviceId, source_storage_key: item.sourceStorageKey ?? "", version: item.version, client_created_at: payloadString(itemPayload(item), "clientCreatedAt") ?? new Date().toISOString(), client_updated_at: item.updatedAt, deleted_at: item.deletedAt ?? null };
+function commonInsert(item: SyncQueueItem, userId: string, sourceDeviceId: string | null) {
+  return { user_id: userId, local_id: item.entityId, source_device_id: sourceDeviceId, source_storage_key: item.sourceStorageKey ?? "", version: item.version, client_created_at: payloadString(itemPayload(item), "clientCreatedAt") ?? new Date().toISOString(), client_updated_at: item.updatedAt, deleted_at: item.deletedAt ?? null };
 }
 
-async function pushOne(client: SupabaseClient<Database>, userId: string, item: SyncQueueItem): Promise<boolean> {
+async function pushOne(client: SupabaseClient<Database>, userId: string, item: SyncQueueItem, sourceDeviceId: string | null): Promise<boolean> {
   const payload = itemPayload(item);
-  const base = commonInsert(item, userId);
+  const base = commonInsert(item, userId, sourceDeviceId);
   const snapshot = { updatedAt: item.updatedAt, version: item.version, deviceId: item.deviceId, deletedAt: item.deletedAt ?? null };
   if (item.itemType === "bookkeeping-record") {
     const { data: existing, error } = await client.from("bookkeeping_records").select("*").eq("user_id", userId).eq("local_id", item.entityId).maybeSingle();
@@ -375,9 +386,15 @@ export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, us
   const queue = readSyncQueue().filter((item) => item.module === "bookkeeping");
   const uploadedIds: string[] = [];
   let failed = 0;
+  let sourceDeviceId: string | null = null;
+  const deviceId = queue[0]?.deviceId;
+  if (deviceId) {
+    const { data } = await client.from("devices").select("id").eq("id", deviceId).eq("user_id", userId).maybeSingle();
+    sourceDeviceId = data?.id ?? null;
+  }
   for (const item of queue) {
     try {
-      if (item.itemType) await pushOne(client, userId, item);
+      if (item.itemType) await pushOne(client, userId, item, sourceDeviceId);
       uploadedIds.push(item.id);
     } catch {
       failed += 1;
@@ -389,9 +406,18 @@ export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, us
 
 export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<{ queueSize: number; failed: number }> {
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
-  await pullAndMergeFinalFinance(client, userId);
+  let failed = 0;
+  try {
+    failed += (await pullAndMergeFinalFinance(client, userId)).failed;
+  } catch {
+    failed += 4;
+  }
   enqueueLocalFinalFinanceChanges(deviceId);
   const pushed = await pushFinalFinanceQueue(client, userId);
-  await pullAndMergeFinalFinance(client, userId);
-  return { queueSize: readSyncQueue().filter((item) => item.module === "bookkeeping").length, failed: pushed.failed };
+  try {
+    failed += (await pullAndMergeFinalFinance(client, userId)).failed;
+  } catch {
+    failed += 4;
+  }
+  return { queueSize: readSyncQueue().filter((item) => item.module === "bookkeeping").length, failed: failed + pushed.failed };
 }
