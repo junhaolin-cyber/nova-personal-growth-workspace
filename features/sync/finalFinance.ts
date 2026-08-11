@@ -201,7 +201,22 @@ function rowSnapshot(row: RowEnvelope["row"]): { updatedAt: string; version: num
 type FinalFinancePullResult = {
   pulled: number;
   failed: number;
+  errors: string[];
 };
+
+const FINAL_FINANCE_TABLES = [
+  "bookkeeping_records",
+  "bookkeeping_categories",
+  "bookkeeping_accounts",
+  "bookkeeping_budgets",
+] as const;
+
+function safeSupabaseError(error: unknown): string {
+  if (!isObject(error)) return "未知错误";
+  const code = typeof error.code === "string" ? error.code : "未知代码";
+  const status = typeof error.status === "number" ? ` HTTP ${error.status}` : "";
+  return `${code}${status}`;
+}
 
 function envelopeSource(envelope: RowEnvelope): { itemType: FinalFinanceItemType; sourceStorageKey: string } {
   switch (envelope.table) {
@@ -266,12 +281,14 @@ export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>,
     client.from("bookkeeping_budgets").select("*").eq("user_id", userId),
   ]);
   let failed = 0;
-  const results = rawResults.map((result) => {
+  const errors: string[] = [];
+  const results = rawResults.map((result, index) => {
     if (!result.error) return result;
     failed += 1;
+    const table = FINAL_FINANCE_TABLES[index];
+    errors.push(`${table} 查询失败（${safeSupabaseError(result.error)}）`);
     return { ...result, data: [], error: null };
   }) as typeof rawResults;
-  if (results.some((result) => result.error)) throw new Error("个人财务云端资料暂时无法读取，请稍后重试。");
   const rows: RowEnvelope[] = [
     ...(results[0].data ?? []).map((row) => ({ table: "bookkeeping_records" as const, row })),
     ...(results[1].data ?? []).map((row) => ({ table: "bookkeeping_categories" as const, row })),
@@ -303,7 +320,7 @@ export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>,
   });
   writeMetadata(metadata);
   if (changed) notifyFinalFinanceRemoteMerged();
-  return { pulled: applicable.length, failed };
+  return { pulled: applicable.length, failed, errors };
 }
 
 export function enqueueLocalFinalFinanceChanges(deviceId: string): number {
@@ -382,10 +399,11 @@ async function pushOne(client: SupabaseClient<Database>, userId: string, item: S
   return true;
 }
 
-export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, userId: string): Promise<{ uploaded: number; failed: number }> {
+export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, userId: string): Promise<{ uploaded: number; failed: number; errors: string[] }> {
   const queue = readSyncQueue().filter((item) => item.module === "bookkeeping");
   const uploadedIds: string[] = [];
   let failed = 0;
+  const errors: string[] = [];
   let sourceDeviceId: string | null = null;
   const deviceId = queue[0]?.deviceId;
   if (deviceId) {
@@ -398,26 +416,35 @@ export async function pushFinalFinanceQueue(client: SupabaseClient<Database>, us
       uploadedIds.push(item.id);
     } catch {
       failed += 1;
+      errors.push(`${item.itemType ?? "bookkeeping"} 上传失败`);
     }
   }
   removeSyncOperations(uploadedIds);
-  return { uploaded: uploadedIds.length, failed };
+  return { uploaded: uploadedIds.length, failed, errors };
 }
 
-export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<{ queueSize: number; failed: number }> {
+export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<{ queueSize: number; failed: number; errors: string[] }> {
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
   let failed = 0;
+  const errors: string[] = [];
   try {
-    failed += (await pullAndMergeFinalFinance(client, userId)).failed;
+    const result = await pullAndMergeFinalFinance(client, userId);
+    failed += result.failed;
+    errors.push(...result.errors);
   } catch {
     failed += 4;
+    errors.push("个人财务查询失败");
   }
   enqueueLocalFinalFinanceChanges(deviceId);
   const pushed = await pushFinalFinanceQueue(client, userId);
+  errors.push(...pushed.errors);
   try {
-    failed += (await pullAndMergeFinalFinance(client, userId)).failed;
+    const result = await pullAndMergeFinalFinance(client, userId);
+    failed += result.failed;
+    errors.push(...result.errors);
   } catch {
     failed += 4;
+    errors.push("个人财务回读失败");
   }
-  return { queueSize: readSyncQueue().filter((item) => item.module === "bookkeeping").length, failed: failed + pushed.failed };
+  return { queueSize: readSyncQueue().filter((item) => item.module === "bookkeeping").length, failed: failed + pushed.failed, errors: Array.from(new Set(errors)) };
 }

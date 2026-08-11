@@ -6,6 +6,7 @@ import type { AuthAccount } from "@/features/auth/types";
 import { FIRST_BATCH_MIGRATION_COMPLETED_EVENT, FIRST_BATCH_STORAGE_CHANGED_EVENT, FIRST_BATCH_SYNC_REQUESTED_EVENT, SECOND_BATCH_STORAGE_CHANGED_EVENT, THIRD_BATCH_STORAGE_CHANGED_EVENT, FOURTH_BATCH_STORAGE_CHANGED_EVENT, FINAL_FINANCE_STORAGE_CHANGED_EVENT } from "./events";
 import { isNetworkOnline } from "./network";
 import { readSyncQueue, readSyncState, writeSyncState } from "./storage";
+import { verifyCloudConnection } from "./engine";
 import { enqueueLocalFirstBatchChanges, isFirstBatchUploadBlocked, runFirstBatchSyncCycle } from "./firstBatch";
 import { enqueueLocalSecondBatchChanges, runSecondBatchSyncCycle } from "./secondBatch";
 import { enqueueLocalThirdBatchChanges, runThirdBatchSyncCycle } from "./thirdBatch";
@@ -58,42 +59,59 @@ export function useFirstBatchSync(account: AuthAccount | null, routeKey?: string
       setSharedSyncState({ status: "syncing", online: true, cloud: "unknown", lastError: null });
       applyingRemoteRef.current = true;
       try {
+        const connection = await verifyCloudConnection(client, accountId);
+        if (!connection.connected) {
+          setSharedSyncState({ status: "failed", online: true, cloud: "unavailable", lastError: connection.error });
+          return;
+        }
         let firstBatchResult = { queueSize: 0, failed: 0 };
         let secondBatchResult = { queueSize: 0, failed: 0 };
         let thirdBatchResult = { queueSize: 0, failed: 0 };
         let fourthBatchResult = { queueSize: 0, failed: 0 };
-        let finalFinanceResult = { queueSize: 0, failed: 0 };
+        let finalFinanceResult = { queueSize: 0, failed: 0, errors: [] as string[] };
         let failedBatches = 0;
+        const batchErrors: string[] = [];
 
         try {
           firstBatchResult = await runFirstBatchSyncCycle(client, accountId, deviceId, !blockedRef.current);
+          if (firstBatchResult.failed) batchErrors.push("第一批同步失败");
         } catch {
           failedBatches += 1;
+          batchErrors.push("第一批同步失败");
         }
         try {
           secondBatchResult = await runSecondBatchSyncCycle(client, accountId, deviceId);
+          if (secondBatchResult.failed) batchErrors.push("第二批同步失败");
         } catch {
           failedBatches += 1;
+          batchErrors.push("第二批同步失败");
         }
         try {
           thirdBatchResult = await runThirdBatchSyncCycle(client, accountId, deviceId);
+          if (thirdBatchResult.failed) batchErrors.push("第三批同步失败");
         } catch {
           failedBatches += 1;
+          batchErrors.push("第三批同步失败");
         }
         try {
           fourthBatchResult = await runFourthBatchSyncCycle(client, accountId, deviceId);
+          if (fourthBatchResult.failed) batchErrors.push("第四批同步失败");
         } catch {
           failedBatches += 1;
+          batchErrors.push("第四批同步失败");
         }
         try {
           finalFinanceResult = await runFinalFinanceSyncCycle(client, accountId, deviceId);
+          if (finalFinanceResult.failed) batchErrors.push(...finalFinanceResult.errors);
         } catch {
           failedBatches += 1;
+          batchErrors.push("个人财务同步失败");
         }
         const queueSize = readSyncQueue().length;
         const failed = firstBatchResult.failed + secondBatchResult.failed + thirdBatchResult.failed + fourthBatchResult.failed + finalFinanceResult.failed + failedBatches;
         const result = { queueSize, failed };
-        setSharedSyncState({ status: result.queueSize || result.failed ? "pending" : "synced", online: true, cloud: result.failed ? "unavailable" : "connected", lastSyncedAt: result.queueSize || result.failed ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: result.failed ? "部分资料等待下一次联网重试。" : null });
+        const uniqueErrors = Array.from(new Set(batchErrors));
+        setSharedSyncState({ status: result.queueSize || result.failed ? "pending" : "synced", online: true, cloud: "connected", lastSyncedAt: result.queueSize || result.failed ? readSyncState().lastSyncedAt : new Date().toISOString(), lastError: uniqueErrors.length ? `部分同步失败：${uniqueErrors.join("；")}。` : null });
       } catch (error) {
         setSharedSyncState({ status: "failed", online: true, cloud: "unavailable", lastError: error instanceof Error ? error.message : "云同步暂时失败，请稍后重试。" });
       } finally {
