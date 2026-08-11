@@ -382,8 +382,13 @@ export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>,
   const local = new Map(scanBookkeeping().map((record) => [record.key, record]));
   const applicable: RowEnvelope[] = [];
   const skipped = new Set<string>();
+  const pendingKeys = pendingFinalFinanceKeys();
   rows.forEach((envelope) => {
     const key = envelopeKey(envelope);
+    if (pendingKeys.has(key)) {
+      skipped.add(key);
+      return;
+    }
     const previous = metadata[key];
     if (previous && compareVersionedSnapshots(rowSnapshot(envelope.row), previous) < 0) return;
     const localRecord = local.get(key);
@@ -463,6 +468,14 @@ function itemPayload(item: SyncQueueItem): Record<string, Json> {
   return (item.payload ?? {}) as Record<string, Json>;
 }
 
+function pendingFinalFinanceKeys(): Set<string> {
+  return new Set(
+    readSyncQueue()
+      .filter((item) => item.module === "bookkeeping" && item.itemType?.startsWith("bookkeeping-"))
+      .map((item) => recordKey(item.itemType as FinalFinanceItemType, item.entityId)),
+  );
+}
+
 function commonInsert(item: SyncQueueItem, userId: string, sourceDeviceId: string | null) {
   return { user_id: userId, local_id: item.entityId, source_device_id: sourceDeviceId, source_storage_key: item.sourceStorageKey ?? "", version: item.version, client_created_at: payloadString(itemPayload(item), "clientCreatedAt") ?? new Date().toISOString(), client_updated_at: item.updatedAt, deleted_at: item.deletedAt ?? null };
 }
@@ -536,6 +549,9 @@ export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>,
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
   let failed = 0;
   const errors: string[] = [];
+  enqueueLocalFinalFinanceChanges(deviceId);
+  const pushed = await pushFinalFinanceQueue(client, userId);
+  errors.push(...pushed.errors);
   try {
     const result = await pullAndMergeFinalFinance(client, userId);
     failed += result.failed;
@@ -544,9 +560,6 @@ export async function runFinalFinanceSyncCycle(client: SupabaseClient<Database>,
     failed += 4;
     errors.push("个人财务查询失败");
   }
-  enqueueLocalFinalFinanceChanges(deviceId);
-  const pushed = await pushFinalFinanceQueue(client, userId);
-  errors.push(...pushed.errors);
   try {
     const result = await pullAndMergeFinalFinance(client, userId);
     failed += result.failed;
