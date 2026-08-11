@@ -32,6 +32,7 @@ export function FinanceLearning() {
   const [state, setState] = React.useState<FinanceLearningState>(() => createDefaultFinanceState());
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [selectedKnowledgeId, setSelectedKnowledgeId] = React.useState<string | null>(null);
   const [expanded, setExpanded] = React.useState(false);
   const [notice, setNotice] = React.useState("");
 
@@ -59,7 +60,10 @@ export function FinanceLearning() {
   if (!isHydrated) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备理财学习内容…</div>;
 
   const plan = state.dailyPlans[today] ?? createFinanceDailyPlan(financeKnowledge, state, today, state.settings);
-  const currentKnowledge = financeKnowledgeMap.get(plan.knowledgeIds[currentIndex]) ?? financeKnowledgeMap.get(plan.knowledgeIds[0]);
+  const currentKnowledge = financeKnowledgeMap.get(selectedKnowledgeId ?? plan.knowledgeIds[currentIndex]) ?? financeKnowledgeMap.get(plan.knowledgeIds[0]);
+  const isCurrentInTodayPlan = Boolean(currentKnowledge && plan.knowledgeIds.includes(currentKnowledge.id));
+  const displayIndex = isCurrentInTodayPlan ? plan.knowledgeIds.indexOf(currentKnowledge?.id ?? "") : 0;
+  const displayTotal = isCurrentInTodayPlan ? plan.knowledgeIds.length : 1;
   const stats = getFinanceStats(state, plan, today);
   const brief = getBriefForDate(today);
   if (!currentKnowledge) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white p-10 text-center text-sm text-muted">暂时没有可学习的知识点。</div>;
@@ -70,12 +74,14 @@ export function FinanceLearning() {
     setState((current) => {
       const nextProgress = updateFinanceProgress(current.progress[currentKnowledge.id], currentKnowledge.id, status, today);
       const currentPlan = current.dailyPlans[today] ?? plan;
+      if (!isCurrentInTodayPlan) return { ...current, progress: { ...current.progress, [currentKnowledge.id]: nextProgress } };
       const completedKnowledgeIds = status === "未开始" ? currentPlan.completedKnowledgeIds.filter((id) => id !== currentKnowledge.id) : Array.from(new Set([...currentPlan.completedKnowledgeIds, currentKnowledge.id]));
       const nextPlan = { ...currentPlan, completedKnowledgeIds, startedAt: currentPlan.startedAt ?? new Date().toISOString(), completedAt: completedKnowledgeIds.length === currentPlan.knowledgeIds.length ? new Date().toISOString() : undefined };
       return updateCurrentHistory({ ...current, progress: { ...current.progress, [currentKnowledge.id]: nextProgress }, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } }, nextPlan);
     });
     setNotice("学习状态已保存");
-    setCurrentIndex((index) => Math.min(index + 1, Math.max(0, plan.knowledgeIds.length - 1)));
+    if (!isCurrentInTodayPlan) setSelectedKnowledgeId(null);
+    else setCurrentIndex((index) => Math.min(index + 1, Math.max(0, plan.knowledgeIds.length - 1)));
   };
 
   const handleQuizAnswer = (questionId: string, selectedAnswer: string, correct: boolean) => {
@@ -84,9 +90,10 @@ export function FinanceLearning() {
       const attempts = [...current.quizAttempts.filter((item) => item.id !== attempt.id), attempt];
       const quizDone = currentKnowledge.quiz.every((question) => attempts.some((item) => item.date === today && item.questionId === question.id));
       const currentPlan = current.dailyPlans[today] ?? plan;
+      const progress = markQuizResult(current.progress[currentKnowledge.id], currentKnowledge.id, correct, today);
+      if (!isCurrentInTodayPlan) return { ...current, quizAttempts: attempts, progress: { ...current.progress, [currentKnowledge.id]: progress } };
       const completedQuizIds = quizDone ? Array.from(new Set([...currentPlan.completedQuizIds, currentKnowledge.id])) : currentPlan.completedQuizIds;
       const nextPlan = { ...currentPlan, completedQuizIds };
-      const progress = markQuizResult(current.progress[currentKnowledge.id], currentKnowledge.id, correct, today);
       return updateCurrentHistory({ ...current, quizAttempts: attempts, progress: { ...current.progress, [currentKnowledge.id]: progress }, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } }, nextPlan);
     });
   };
@@ -125,9 +132,9 @@ export function FinanceLearning() {
     <section className="flex flex-wrap items-end justify-between gap-6"><div><p className="flex items-center gap-2 text-sm font-bold text-[#7567B6]"><BookOpen size={16} />理财学习</p><h1 className="mt-3 text-4xl font-extrabold tracking-[-0.05em]">把财务概念学成判断力</h1><p className="mt-3 text-sm text-muted">{today} · 每天理解一个原理，慢慢建立自己的财务语言。</p></div><div className="flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm font-bold text-muted shadow-sm"><Clock3 size={16} />每天约 {state.settings.dailyMinutes} 分钟</div></section>
     <FinanceDisclaimer />
     <FinanceOverview stats={stats} />
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]"><div className="space-y-6"><DailyKnowledge knowledge={currentKnowledge} progress={state.progress[currentKnowledge.id]} index={currentIndex} total={plan.knowledgeIds.length} expanded={expanded} onExpandedChange={setExpanded} onStatus={handleStatus} onFavorite={() => handleFavorite()} onPrevious={() => setCurrentIndex((index) => Math.max(0, index - 1))} onNext={() => setCurrentIndex((index) => Math.min(plan.knowledgeIds.length - 1, index + 1))} onSpeak={handleSpeech} /><KnowledgeQuiz key={currentKnowledge.id} knowledge={currentKnowledge} completedQuestionIds={plan.completedQuizIds} onAnswer={handleQuizAnswer} /></div><div className="space-y-6"><FinanceCoach knowledge={currentKnowledge} onReply={getFinanceCoachReply} /><DailyReflection date={today} reflection={state.reflections[today]} onSave={handleSaveReflection} onDelete={handleDeleteReflection} /></div></div>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]"><div className="space-y-6"><DailyKnowledge knowledge={currentKnowledge} progress={state.progress[currentKnowledge.id]} index={displayIndex} total={displayTotal} expanded={expanded} onExpandedChange={setExpanded} onStatus={handleStatus} onFavorite={() => handleFavorite()} onPrevious={() => { setSelectedKnowledgeId(null); setCurrentIndex((index) => Math.max(0, index - 1)); }} onNext={() => { setSelectedKnowledgeId(null); setCurrentIndex((index) => Math.min(plan.knowledgeIds.length - 1, index + 1)); }} onSpeak={handleSpeech} /><KnowledgeQuiz key={currentKnowledge.id} knowledge={currentKnowledge} completedQuestionIds={isCurrentInTodayPlan ? plan.completedQuizIds : []} onAnswer={handleQuizAnswer} /></div><div className="space-y-6"><FinanceCoach knowledge={currentKnowledge} onReply={getFinanceCoachReply} /><DailyReflection date={today} reflection={state.reflections[today]} onSave={handleSaveReflection} onDelete={handleDeleteReflection} /></div></div>
     {state.settings.showBrief && <FinanceBriefSection brief={brief} />}
-    <FinanceLibrary knowledge={financeKnowledge} progress={state.progress} onSelect={(id) => { const index = plan.knowledgeIds.indexOf(id); if (index >= 0) setCurrentIndex(index); else setNotice("这个知识点不在今天任务中，可先在知识库修改学习状态。"); }} onStatus={handleLibraryStatus} onFavorite={handleFavorite} />
+    <FinanceLibrary knowledge={financeKnowledge} progress={state.progress} onSelect={(id) => { const index = plan.knowledgeIds.indexOf(id); if (index >= 0) { setSelectedKnowledgeId(null); setCurrentIndex(index); } else { setSelectedKnowledgeId(id); setNotice("已打开收藏知识点，可以继续查看、学习或取消收藏。"); } }} onStatus={handleLibraryStatus} onFavorite={handleFavorite} />
     <FinanceHistory history={state.history} currentStreak={stats.currentStreak} longestStreak={stats.longestStreak} totalStudyMinutes={stats.totalStudyMinutes} totalCompletedKnowledge={stats.totalCompletedKnowledge} onClear={handleClearHistory} />
     <FinanceSettings settings={state.settings} onChange={(settings) => setState((current) => ({ ...current, settings }))} />
     <p className="flex items-center justify-center gap-2 pb-4 text-xs text-muted"><Sparkles size={14} className="text-[#7567B6]" />理财学习优先保存在当前设备，登录后会按同步状态安全备份。</p>

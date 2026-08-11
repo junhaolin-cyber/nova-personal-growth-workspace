@@ -3,14 +3,15 @@
 import * as React from "react";
 import type { SpeakingAccent } from "../types";
 
-type RecognitionResult = { 0: { transcript: string } };
-type RecognitionEvent = Event & { results: { [index: number]: RecognitionResult } };
+type RecognitionResult = { 0?: { transcript?: string }; isFinal?: boolean };
+type RecognitionEvent = Event & { resultIndex?: number; results: { length: number; [index: number]: RecognitionResult | undefined } };
 type RecognitionErrorEvent = Event & { error?: string };
 type RecognitionInstance = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: RecognitionEvent) => void) | null;
+  onstart: (() => void) | null;
   onerror: ((event: RecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
   start: () => void;
@@ -44,18 +45,25 @@ export function useSpeechRecognition(onTranscript: (text: string) => void, accen
       recognitionRef.current?.abort();
       const recognition = new Constructor();
       recognition.lang = accent === "uk" ? "en-GB" : "en-US";
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.continuous = false;
       recognition.onresult = (event) => {
-        const text = event.results[0]?.[0]?.transcript?.trim() ?? "";
+        const startIndex = typeof event.resultIndex === "number" ? event.resultIndex : 0;
+        const finalTexts: string[] = [];
+        for (let index = startIndex; index < event.results.length; index += 1) {
+          const result = event.results[index];
+          const text = result?.[0]?.transcript?.trim() ?? "";
+          if (text && result?.isFinal) finalTexts.push(text);
+        }
+        const text = finalTexts.join(" ").trim();
         if (text) onTranscript(text);
-        else setError("没有识别到内容，请再试一次。");
       };
       recognition.onerror = (event) => {
         const message = event.error === "not-allowed" ? "麦克风权限被拒绝，可以继续使用文字输入。" : "语音输入暂时不可用，可以继续使用文字输入。";
         setError(message);
         setStatus("error");
       };
+      recognition.onstart = () => setStatus("listening");
       recognition.onend = () => setStatus("idle");
       recognitionRef.current = recognition;
       setError("");

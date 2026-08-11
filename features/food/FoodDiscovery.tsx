@@ -48,22 +48,27 @@ export function FoodDiscovery() {
   };
   const updateRestaurant = (id: string, patch: Partial<RestaurantRecord>) => setState((current) => ({ ...current, restaurants: current.restaurants.map((restaurant) => restaurant.id === id ? { ...restaurant, ...patch, updatedAt: new Date().toISOString() } : restaurant) }));
   const handleSearch = async () => {
-    if (!searchInput.name.trim()) return;
+    if (!searchInput.name.trim()) { setNotice("请输入餐厅名称后再搜索。"); return; }
     setIsSearching(true);
-    const result = await searchRestaurants(searchInput);
-    if (!result.records.length) { setNotice(result.message ?? "没有找到匹配的真实门店。"); setIsSearching(false); return; }
-    setState((current) => {
-      const restaurants = [...current.restaurants];
-      result.records.forEach((record) => {
-        const index = restaurants.findIndex((item) => item.sourcePlaceId && item.sourcePlaceId === record.sourcePlaceId);
-        if (index >= 0) restaurants[index] = { ...record, status: restaurants[index].status, lastVisitedAt: restaurants[index].lastVisitedAt, createdAt: restaurants[index].createdAt, officialSource: restaurants[index].officialSource, officialData: restaurants[index].officialData };
-        else restaurants.unshift(record);
+    try {
+      const result = await searchRestaurants(searchInput);
+      if (!result.records.length) { setNotice(result.message ?? "没有找到匹配的真实门店。"); return; }
+      setState((current) => {
+        const restaurants = [...current.restaurants];
+        result.records.forEach((record) => {
+          const index = restaurants.findIndex((item) => item.sourcePlaceId && item.sourcePlaceId === record.sourcePlaceId);
+          if (index >= 0) restaurants[index] = { ...record, status: restaurants[index].status, lastVisitedAt: restaurants[index].lastVisitedAt, createdAt: restaurants[index].createdAt, officialSource: restaurants[index].officialSource, officialData: restaurants[index].officialData };
+          else restaurants.unshift(record);
+        });
+        return { ...current, restaurants };
       });
-      return { ...current, restaurants };
-    });
-    setSelectedId(result.records[0].id);
-    setNotice(result.message ?? `已找到 ${result.records.length} 家候选门店。`);
-    setIsSearching(false);
+      setSelectedId(result.records[0].id);
+      setNotice(result.message ?? `已找到 ${result.records.length} 家候选门店。`);
+    } catch {
+      setNotice("餐厅搜索暂时失败，请稍后重试。");
+    } finally {
+      setIsSearching(false);
+    }
   };
   const handleOfficialEnrich = async (url: string) => {
     if (!selected || selected.sourceProvider !== "amap") return;
