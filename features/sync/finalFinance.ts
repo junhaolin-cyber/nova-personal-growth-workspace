@@ -440,6 +440,25 @@ export function enqueueLocalFinalFinanceChanges(deviceId: string): number {
   return queued;
 }
 
+export function markLocalFinalFinanceRecordDeleted(entityId: string): void {
+  const metadata = readMetadata();
+  const key = recordKey("bookkeeping-record", entityId);
+  const previous = metadata[key];
+  const localRecord = scanBookkeeping().find((record) => record.itemType === "bookkeeping-record" && record.entityId === entityId);
+  if (previous?.deletedAt) return;
+  if (!previous && !localRecord) return;
+
+  const deletedAt = new Date().toISOString();
+  const version = (previous?.version ?? 0) + 1;
+  const payload = previous?.payload ?? localRecord?.payload ?? {};
+  const sourceStorageKey = previous?.sourceStorageKey ?? localRecord?.sourceStorageKey ?? BOOKKEEPING_STORAGE_KEYS.records;
+  const clientCreatedAt = previous?.clientCreatedAt ?? localRecord?.clientCreatedAt ?? deletedAt;
+  const deviceId = previous?.deviceId ?? "local";
+  metadata[key] = { module: "bookkeeping", itemType: "bookkeeping-record", entityId, payload, sourceStorageKey, clientCreatedAt, signature: signature(payload), updatedAt: deletedAt, version, deviceId, deletedAt, localPresence: false };
+  writeMetadata(metadata);
+  enqueueSyncOperation({ module: "bookkeeping", itemType: "bookkeeping-record", entityId, operation: "delete", payload: { ...payload, clientCreatedAt }, sourceStorageKey, deletedAt, version, deviceId, updatedAt: deletedAt });
+}
+
 function itemPayload(item: SyncQueueItem): Record<string, Json> {
   return (item.payload ?? {}) as Record<string, Json>;
 }

@@ -16,6 +16,7 @@ import { Statistics } from "./components/Statistics";
 import { createDefaultBookkeepingState, loadBookkeepingState, saveBookkeepingState } from "./storage";
 import type { BookkeepingRecord, BookkeepingRecordInput, BookkeepingState } from "./types";
 import { FINAL_FINANCE_REMOTE_MERGED_EVENT, notifyFinalFinanceStorageChanged } from "@/features/sync/events";
+import { markLocalFinalFinanceRecordDeleted } from "@/features/sync/finalFinance";
 
 export function Bookkeeping() {
   const [today] = React.useState(() => getTodayKey());
@@ -42,7 +43,7 @@ export function Bookkeeping() {
   const sortedRecords = [...state.records].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
   const monthRecords = sortedRecords.filter((record) => record.date.startsWith(month));
   const saveRecord = (input: BookkeepingRecordInput) => { const timestamp = new Date().toISOString(); if (editingRecord) { setState((current) => ({ ...current, records: current.records.map((record) => record.id === editingRecord.id ? { ...record, ...input, updatedAt: timestamp } : record) })); setEditingRecord(undefined); setNotice("账单已更新"); return; } const record: BookkeepingRecord = { ...input, id: `record-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: timestamp, updatedAt: timestamp }; setState((current) => ({ ...current, records: [record, ...current.records] })); setNotice("账单已保存"); };
-  const deleteRecord = (id: string) => { if (!window.confirm("确定删除这笔账单吗？删除后不会影响其他模块。")) return; setState((current) => ({ ...current, records: current.records.filter((record) => record.id !== id) })); setNotice("账单已删除"); if (editingRecord?.id === id) setEditingRecord(undefined); };
+  const deleteRecord = (id: string) => { if (!window.confirm("确定删除这笔账单吗？删除后不会影响其他模块。")) return; markLocalFinalFinanceRecordDeleted(id); setState((current) => ({ ...current, records: current.records.filter((record) => record.id !== id) })); setNotice("账单已删除"); if (editingRecord?.id === id) setEditingRecord(undefined); };
   const showNotice = (message: string) => setNotice(message);
 
   return <div className="mx-auto max-w-[1240px] space-y-8">
