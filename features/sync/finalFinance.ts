@@ -215,7 +215,95 @@ function safeSupabaseError(error: unknown): string {
   if (!isObject(error)) return "未知错误";
   const code = typeof error.code === "string" ? error.code : "未知代码";
   const status = typeof error.status === "number" ? ` HTTP ${error.status}` : "";
-  return `${code}${status}`;
+  const message = typeof error.message === "string" ? ` ${error.message.replace(/\s+/g, " ").slice(0, 160)}` : "";
+  return `${code}${status}${message}`;
+}
+
+type FinalFinanceTable = (typeof FINAL_FINANCE_TABLES)[number];
+type FinalFinanceQueryResult = { table: FinalFinanceTable; rows: unknown[]; error: unknown | null };
+
+function isDecimalValue(value: unknown, allowNegative = false): boolean {
+  if (typeof value === "string") return normalizeDecimalString(value, allowNegative) !== null;
+  if (typeof value === "number") return decimalFromNumber(value, allowNegative) !== null;
+  return false;
+}
+
+function isNullableText(value: unknown): boolean {
+  return value === null || typeof value === "string";
+}
+
+function hasCommonFinanceRowFields(value: Record<string, unknown>): boolean {
+  return typeof value.local_id === "string"
+    && value.local_id.trim().length > 0
+    && (value.source_device_id === null || typeof value.source_device_id === "string")
+    && typeof value.source_storage_key === "string"
+    && Number.isInteger(value.version)
+    && Number(value.version) > 0
+    && typeof value.client_created_at === "string"
+    && typeof value.client_updated_at === "string"
+    && isNullableText(value.deleted_at);
+}
+
+function isValidFinalFinanceRow(table: FinalFinanceTable, value: unknown): boolean {
+  if (!isObject(value) || !hasCommonFinanceRowFields(value)) return false;
+  if (table === "bookkeeping_records") {
+    return (value.record_type === "income" || value.record_type === "expense")
+      && isDecimalValue(value.amount)
+      && typeof value.category_local_id === "string"
+      && value.category_local_id.trim().length > 0
+      && typeof value.account_local_id === "string"
+      && value.account_local_id.trim().length > 0
+      && typeof value.record_date === "string"
+      && typeof value.record_time === "string"
+      && typeof value.note === "string";
+  }
+  if (table === "bookkeeping_categories") {
+    return (value.category_type === "income" || value.category_type === "expense")
+      && typeof value.name === "string"
+      && value.name.trim().length > 0
+      && typeof value.icon === "string"
+      && Number.isInteger(value.sort_order)
+      && typeof value.is_active === "boolean";
+  }
+  if (table === "bookkeeping_accounts") {
+    return ["cash", "bank", "credit", "wallet", "other"].includes(String(value.account_type))
+      && typeof value.name === "string"
+      && value.name.trim().length > 0
+      && isDecimalValue(value.opening_balance, true)
+      && typeof value.is_active === "boolean";
+  }
+  return typeof value.budget_month === "string"
+    && isDecimalValue(value.amount)
+    && isNullableText(value.category_local_id)
+    && typeof value.is_active === "boolean";
+}
+
+async function queryFinalFinanceTable<Row>(table: FinalFinanceTable, query: () => Promise<{ data: Row[] | null; error: unknown | null }>): Promise<FinalFinanceQueryResult> {
+  try {
+    const result = await query();
+    return { table, rows: result.data ?? [], error: result.error };
+  } catch (error) {
+    return { table, rows: [], error };
+  }
+}
+
+function mapFinalFinanceRows(result: FinalFinanceQueryResult, errors: string[]): RowEnvelope[] {
+  if (result.error) {
+    errors.push(`${result.table} 查询失败（${safeSupabaseError(result.error)}）`);
+    return [];
+  }
+  const rows: RowEnvelope[] = [];
+  result.rows.forEach((value) => {
+    if (!isValidFinalFinanceRow(result.table, value)) {
+      errors.push(`${result.table} 数据映射失败（云端字段与当前版本不一致或存在无效数据）`);
+      return;
+    }
+    if (result.table === "bookkeeping_records") rows.push({ table: result.table, row: value as RecordRow });
+    else if (result.table === "bookkeeping_categories") rows.push({ table: result.table, row: value as CategoryRow });
+    else if (result.table === "bookkeeping_accounts") rows.push({ table: result.table, row: value as AccountRow });
+    else rows.push({ table: result.table, row: value as BudgetRow });
+  });
+  return rows;
 }
 
 function envelopeSource(envelope: RowEnvelope): { itemType: FinalFinanceItemType; sourceStorageKey: string } {
@@ -274,27 +362,16 @@ function mergeBookkeeping(rows: RowEnvelope[]): boolean {
 }
 
 export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>, userId: string): Promise<FinalFinancePullResult> {
-  const rawResults = await Promise.all([
-    client.from("bookkeeping_records").select("*").eq("user_id", userId),
-    client.from("bookkeeping_categories").select("*").eq("user_id", userId),
-    client.from("bookkeeping_accounts").select("*").eq("user_id", userId),
-    client.from("bookkeeping_budgets").select("*").eq("user_id", userId),
-  ]);
-  let failed = 0;
   const errors: string[] = [];
-  const results = rawResults.map((result, index) => {
-    if (!result.error) return result;
-    failed += 1;
-    const table = FINAL_FINANCE_TABLES[index];
-    errors.push(`${table} 查询失败（${safeSupabaseError(result.error)}）`);
-    return { ...result, data: [], error: null };
-  }) as typeof rawResults;
-  const rows: RowEnvelope[] = [
-    ...(results[0].data ?? []).map((row) => ({ table: "bookkeeping_records" as const, row })),
-    ...(results[1].data ?? []).map((row) => ({ table: "bookkeeping_categories" as const, row })),
-    ...(results[2].data ?? []).map((row) => ({ table: "bookkeeping_accounts" as const, row })),
-    ...(results[3].data ?? []).map((row) => ({ table: "bookkeeping_budgets" as const, row })),
-  ];
+  const rawResults = await Promise.all([
+    queryFinalFinanceTable("bookkeeping_records", async () => client.from("bookkeeping_records").select("*").eq("user_id", userId)),
+    queryFinalFinanceTable("bookkeeping_categories", async () => client.from("bookkeeping_categories").select("*").eq("user_id", userId)),
+    queryFinalFinanceTable("bookkeeping_accounts", async () => client.from("bookkeeping_accounts").select("*").eq("user_id", userId)),
+    queryFinalFinanceTable("bookkeeping_budgets", async () => client.from("bookkeeping_budgets").select("*").eq("user_id", userId)),
+  ]);
+  const rows = rawResults.flatMap((result) => mapFinalFinanceRows(result, errors));
+  let failed = rawResults.filter((result) => Boolean(result.error)).length;
+  failed += errors.length - failed;
   const metadata = readMetadata();
   const local = new Map(scanBookkeeping().map((record) => [record.key, record]));
   const applicable: RowEnvelope[] = [];
@@ -307,7 +384,14 @@ export async function pullAndMergeFinalFinance(client: SupabaseClient<Database>,
     if (!previous && localRecord && !envelope.row.deleted_at && shouldPreserveUntrackedLocal(localRecord)) { skipped.add(key); return; }
     applicable.push(envelope);
   });
-  const changed = mergeBookkeeping(applicable);
+  let changed = false;
+  try {
+    changed = mergeBookkeeping(applicable);
+  } catch {
+    failed += 1;
+    errors.push("个人财务本地合并失败（云端数据无法写回当前设备）");
+    return { pulled: 0, failed, errors };
+  }
   const afterLocal = new Map(scanBookkeeping().map((record) => [record.key, record]));
   rows.forEach((envelope) => {
     const key = envelopeKey(envelope);
