@@ -494,8 +494,8 @@ export type FourthBatchSyncResult = { queueSize: number; failed: number };
 
 export async function runFourthBatchSyncCycle(client: SupabaseClient<Database>, userId: string, deviceId: string): Promise<FourthBatchSyncResult> {
   if (!isNetworkOnline()) throw new Error("当前处于离线状态。");
-  await pullAndMergeFourthBatch(client, userId);
   enqueueLocalFourthBatchChanges(deviceId);
+  await pullAndMergeFourthBatch(client, userId);
   const pushed = await pushFourthBatchQueue(client, userId);
   await pullAndMergeFourthBatch(client, userId);
   return { queueSize: readSyncQueue().filter((item) => item.module === "finance").length, failed: pushed.failed };

@@ -16,6 +16,7 @@ export function FoodDiscovery() {
   const [state, setState] = React.useState<FoodDiscoveryState>(() => createDefaultFoodState());
   const [selectedId, setSelectedId] = React.useState<string>();
   const [searchInput, setSearchInput] = React.useState<RestaurantSearchInput>({ name: "", address: "", city: "" });
+  const [remoteSearchIds, setRemoteSearchIds] = React.useState<string[] | null>(null);
   const [isVisitFormOpen, setIsVisitFormOpen] = React.useState(false);
   const [notice, setNotice] = React.useState("");
   const [isSearching, setIsSearching] = React.useState(false);
@@ -34,7 +35,9 @@ export function FoodDiscovery() {
   if (!isHydrated) return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备你的美食探索空间…</div>;
 
   const selected = state.restaurants.find((restaurant) => restaurant.id === selectedId);
-  const searchResults = searchLocalRestaurants(state.restaurants, searchInput);
+  const searchResults = remoteSearchIds
+    ? state.restaurants.filter((restaurant) => remoteSearchIds.includes(restaurant.id))
+    : searchLocalRestaurants(state.restaurants, searchInput);
   const handleSelectRestaurant = async (id: string) => {
     setSelectedId(id);
     const restaurant = state.restaurants.find((item) => item.id === id);
@@ -62,6 +65,7 @@ export function FoodDiscovery() {
         });
         return { ...current, restaurants };
       });
+      setRemoteSearchIds(result.records.map((record) => record.id));
       setSelectedId(result.records[0].id);
       setNotice(result.message ?? `已找到 ${result.records.length} 家候选门店。`);
     } catch {
@@ -88,7 +92,7 @@ export function FoodDiscovery() {
     {notice && <div role="status" className="rounded-2xl border border-[#E5D9CA] bg-[#FFFBF7] px-4 py-3 text-sm font-semibold text-[#95633C]">{notice}</div>}
     <section className="flex flex-wrap items-end justify-between gap-6"><div><p className="flex items-center gap-2 text-sm font-bold text-[#C07C3F]"><Utensils size={16} />生活记录 · 美食探索</p><h1 className="mt-3 text-4xl font-extrabold tracking-[-0.05em]">把值得再去的味道记下来</h1><p className="mt-3 text-sm text-muted">从一家餐厅开始，先了解，再体验，最后留下自己的判断。</p></div><div className="flex items-center gap-2 rounded-2xl border border-[#E5D9CA] bg-[#FFFBF7] px-4 py-3 text-xs font-bold text-[#95633C]"><ShieldCheck size={15} />只展示可说明来源的信息</div></section>
     <div className="grid gap-3 sm:grid-cols-3"><SummaryCard icon={<ListChecks size={18} />} label="想去清单" value={state.restaurants.filter((restaurant) => restaurant.status === "want").length} /><SummaryCard icon={<BookOpen size={18} />} label="我的探店" value={state.restaurants.filter((restaurant) => restaurant.status === "visited").length} /><SummaryCard icon={<History size={18} />} label="探店记录" value={state.visits.length} /></div>
-    <RestaurantSearch input={searchInput} results={searchResults} onChange={setSearchInput} onSearch={handleSearch} onSelect={handleSelectRestaurant} isSearching={isSearching} selectedRestaurant={selected?.sourceProvider === "amap" ? selected : undefined} onOfficialEnrich={handleOfficialEnrich} isOfficialEnriching={isOfficialEnriching} />
+    <RestaurantSearch input={searchInput} results={searchResults} onChange={(input) => { setSearchInput(input); setRemoteSearchIds(null); }} onSearch={handleSearch} onSelect={handleSelectRestaurant} isSearching={isSearching} selectedRestaurant={selected?.sourceProvider === "amap" ? selected : undefined} onOfficialEnrich={handleOfficialEnrich} isOfficialEnriching={isOfficialEnriching} />
     {!selected ? <section className="rounded-[24px] border border-dashed border-[#D9DEE3] bg-white px-6 py-16 text-center shadow-card"><Lightbulb className="mx-auto text-[#C07C3F]" size={28} /><h2 className="mt-4 text-xl font-extrabold">搜索一家餐厅，开始建立探店档案</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted">当前版本不会自动抓取大众点评、地图或其他平台内容。搜索后会先保存你输入的门店信息，公开资料需要你通过外部平台自行核验。</p></section> : <>
       <RestaurantDetail restaurant={selected} isFavorite={state.favoriteRestaurantIds.includes(selected.id)} onToggleFavorite={toggleFavorite} onStatusChange={(status) => updateRestaurant(selected.id, { status })} onVisit={() => setIsVisitFormOpen(true)} />
       {isVisitFormOpen && <VisitForm onSave={saveVisit} onCancel={() => setIsVisitFormOpen(false)} />}
