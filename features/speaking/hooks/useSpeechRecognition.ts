@@ -5,7 +5,7 @@ import type { SpeakingAccent } from "../types";
 
 type RecognitionResult = { 0?: { transcript?: string }; isFinal?: boolean };
 type RecognitionEvent = Event & { resultIndex?: number; results: { length: number; [index: number]: RecognitionResult | undefined } };
-type RecognitionErrorEvent = Event & { error?: string };
+type RecognitionErrorEvent = Event & { error?: string; message?: string };
 type RecognitionInstance = {
   lang: string;
   interimResults: boolean;
@@ -70,7 +70,10 @@ export function useSpeechRecognition(onTranscript: (text: string) => void, accen
       };
       recognition.onerror = (event) => {
         startingRef.current = false;
-        const message = event.error === "not-allowed" ? "麦克风权限被拒绝，可以继续使用文字输入。" : "语音输入暂时不可用，可以继续使用文字输入。";
+        const errorCode = event.error?.trim() || "unknown";
+        const message = errorCode === "not-allowed"
+          ? "麦克风权限被拒绝，可以继续使用文字输入。"
+          : `语音输入暂时不可用（${errorCode}），可以继续使用文字输入。`;
         setError(message);
         setStatus("error");
       };

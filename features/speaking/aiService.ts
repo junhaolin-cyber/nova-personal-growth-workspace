@@ -13,12 +13,6 @@ export type SpeakingTurnResponse = {
   feedback: SpeakingFeedback;
 };
 
-const fallbackReplies = [
-  "That sounds interesting. Could you tell me a little more about it?",
-  "I see what you mean. What would you like to do next?",
-  "That makes sense. How did you feel about the experience?",
-];
-
 function createFeedback(userText: string, scenario: SpeakingScenario): SpeakingFeedback {
   const trimmed = userText.trim();
   const lower = trimmed.toLowerCase();
@@ -53,11 +47,32 @@ export function getSpeakingHint(scenario: SpeakingScenario, level: number) {
 }
 
 export async function simulateSpeakingTurn({ scenario, settings, history, userText }: SpeakingTurnRequest): Promise<SpeakingTurnResponse> {
-  // This local provider keeps the first phase usable without exposing an API key.
-  // The request shape is intentionally ready to be replaced by a server-side AI provider later.
-  await Promise.resolve();
-  const replyIndex = Math.max(0, Math.floor((history.length - 1) / 2)) % fallbackReplies.length;
-  const reply = settings.level === "beginner" ? fallbackReplies[replyIndex].split(". ")[0] + "." : fallbackReplies[replyIndex];
-  return { reply, translation: "听起来很有意思。可以再告诉我更多吗？", feedback: createFeedback(userText, scenario) };
-}
+  const response = await fetch("/api/speaking/turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      scenario: {
+        titleZh: scenario.titleZh,
+        titleEn: scenario.titleEn,
+        aiRole: scenario.aiRole,
+        userRole: scenario.userRole,
+      },
+      settings: { level: settings.level, accent: settings.accent },
+      history: history.slice(-12).map((message) => ({ role: message.role, text: message.text })),
+      userText,
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
 
+  const data = await response.json().catch(() => null) as { reply?: unknown; translation?: unknown; error?: unknown } | null;
+  if (!response.ok) {
+    const message = typeof data?.error === "string" ? data.error : "AI 回复服务暂时不可用，请稍后重试。";
+    throw new Error(message);
+  }
+  if (typeof data?.reply !== "string" || !data.reply.trim()) throw new Error("AI 回复为空，请稍后重试。");
+  return {
+    reply: data.reply.trim(),
+    translation: typeof data.translation === "string" ? data.translation.trim() : "",
+    feedback: createFeedback(userText, scenario),
+  };
+}
