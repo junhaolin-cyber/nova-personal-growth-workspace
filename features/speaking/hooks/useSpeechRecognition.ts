@@ -23,17 +23,24 @@ type SpeechWindow = Window & { SpeechRecognition?: RecognitionConstructor; webki
 
 export function useSpeechRecognition(onTranscript: (text: string) => void, accent: SpeakingAccent) {
   const recognitionRef = React.useRef<RecognitionInstance | null>(null);
+  const transcriptHandlerRef = React.useRef(onTranscript);
+  const startingRef = React.useRef(false);
   const [status, setStatus] = React.useState<"idle" | "listening" | "error">("idle");
   const [error, setError] = React.useState("");
   const isSupported = typeof window !== "undefined" && Boolean((window as SpeechWindow).SpeechRecognition || (window as SpeechWindow).webkitSpeechRecognition);
 
+  React.useEffect(() => {
+    transcriptHandlerRef.current = onTranscript;
+  }, [onTranscript]);
+
   const stop = React.useCallback(() => {
+    startingRef.current = false;
     try { recognitionRef.current?.stop(); } catch { /* browser may already have stopped */ }
     setStatus("idle");
   }, []);
 
   const start = React.useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || startingRef.current) return;
     const speechWindow = window as SpeechWindow;
     const Constructor = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!Constructor) {
@@ -42,40 +49,52 @@ export function useSpeechRecognition(onTranscript: (text: string) => void, accen
       return;
     }
     try {
+      startingRef.current = true;
       recognitionRef.current?.abort();
       const recognition = new Constructor();
       recognition.lang = accent === "uk" ? "en-GB" : "en-US";
-      recognition.interimResults = true;
+      recognition.interimResults = false;
       recognition.continuous = false;
       recognition.onresult = (event) => {
         const startIndex = typeof event.resultIndex === "number" ? event.resultIndex : 0;
-        const finalTexts: string[] = [];
+        const resultTexts: string[] = [];
         for (let index = startIndex; index < event.results.length; index += 1) {
           const result = event.results[index];
           const text = result?.[0]?.transcript?.trim() ?? "";
-          if (text && result?.isFinal) finalTexts.push(text);
+          if (text) resultTexts.push(text);
         }
-        const text = finalTexts.join(" ").trim();
-        if (text) onTranscript(text);
+        const text = resultTexts.join(" ").trim();
+        if (text) transcriptHandlerRef.current(text);
       };
       recognition.onerror = (event) => {
+        startingRef.current = false;
         const message = event.error === "not-allowed" ? "麦克风权限被拒绝，可以继续使用文字输入。" : "语音输入暂时不可用，可以继续使用文字输入。";
         setError(message);
         setStatus("error");
       };
-      recognition.onstart = () => setStatus("listening");
-      recognition.onend = () => setStatus("idle");
+      recognition.onstart = () => {
+        startingRef.current = false;
+        setStatus("listening");
+      };
+      recognition.onend = () => {
+        startingRef.current = false;
+        if (recognitionRef.current === recognition) recognitionRef.current = null;
+        setStatus("idle");
+      };
       recognitionRef.current = recognition;
       setError("");
-      setStatus("listening");
       recognition.start();
     } catch {
+      startingRef.current = false;
       setError("语音输入启动失败，可以继续使用文字输入。");
       setStatus("error");
     }
-  }, [accent, onTranscript]);
+  }, [accent]);
 
-  React.useEffect(() => () => { try { recognitionRef.current?.abort(); } catch { /* ignore */ } }, []);
+  React.useEffect(() => () => {
+    startingRef.current = false;
+    try { recognitionRef.current?.abort(); } catch { /* ignore */ }
+  }, []);
 
   return { start, stop, status, error, isSupported };
 }
