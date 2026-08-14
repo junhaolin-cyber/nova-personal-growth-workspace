@@ -50,7 +50,9 @@ export function useSpeechRecognition(onTranscript: (text: string) => void, accen
     }
     try {
       startingRef.current = true;
-      recognitionRef.current?.abort();
+      const previousRecognition = recognitionRef.current;
+      recognitionRef.current = null;
+      try { previousRecognition?.abort(); } catch { /* browser may already have stopped */ }
       const recognition = new Constructor();
       recognition.lang = accent === "uk" ? "en-GB" : "en-US";
       recognition.interimResults = false;
@@ -78,8 +80,10 @@ export function useSpeechRecognition(onTranscript: (text: string) => void, accen
       };
       recognition.onend = () => {
         startingRef.current = false;
-        if (recognitionRef.current === recognition) recognitionRef.current = null;
-        setStatus("idle");
+        if (recognitionRef.current === recognition) {
+          recognitionRef.current = null;
+          setStatus("idle");
+        }
       };
       recognitionRef.current = recognition;
       setError("");
