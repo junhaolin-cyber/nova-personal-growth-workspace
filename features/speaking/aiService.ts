@@ -1,4 +1,5 @@
 import type { SpeakingFeedback, SpeakingMessage, SpeakingScenario, SpeakingSettings } from "./types";
+import { generateLocalConversationReply } from "./localConversationEngine";
 
 export type SpeakingTurnRequest = {
   scenario: SpeakingScenario;
@@ -46,33 +47,11 @@ export function getSpeakingHint(scenario: SpeakingScenario, level: number) {
   ][index];
 }
 
-export async function simulateSpeakingTurn({ scenario, settings, history, userText }: SpeakingTurnRequest): Promise<SpeakingTurnResponse> {
-  const response = await fetch("/api/speaking/turn", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      scenario: {
-        titleZh: scenario.titleZh,
-        titleEn: scenario.titleEn,
-        aiRole: scenario.aiRole,
-        userRole: scenario.userRole,
-      },
-      settings: { level: settings.level, accent: settings.accent },
-      history: history.slice(-12).map((message) => ({ role: message.role, text: message.text })),
-      userText,
-    }),
-    signal: AbortSignal.timeout(20000),
-  });
-
-  const data = await response.json().catch(() => null) as { reply?: unknown; translation?: unknown; error?: unknown } | null;
-  if (!response.ok) {
-    const message = typeof data?.error === "string" ? data.error : "AI 回复服务暂时不可用，请稍后重试。";
-    throw new Error(message);
-  }
-  if (typeof data?.reply !== "string" || !data.reply.trim()) throw new Error("AI 回复为空，请稍后重试。");
+export function simulateSpeakingTurn({ scenario, settings, history, userText }: SpeakingTurnRequest): SpeakingTurnResponse {
+  const localReply = generateLocalConversationReply({ scenario, settings, history: history.slice(-12), userText });
   return {
-    reply: data.reply.trim(),
-    translation: typeof data.translation === "string" ? data.translation.trim() : "",
+    reply: localReply.english,
+    translation: localReply.chinese,
     feedback: createFeedback(userText, scenario),
   };
 }
