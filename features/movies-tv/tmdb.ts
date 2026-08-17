@@ -38,7 +38,14 @@ const genreNames: Record<number, string> = {
 };
 
 export function hasTmdbToken(): boolean {
-  return Boolean(process.env.TMDB_API_READ_ACCESS_TOKEN);
+  return Boolean(process.env.TMDB_API_READ_ACCESS_TOKEN?.trim() || process.env.TMDB_API_KEY?.trim());
+}
+
+function getTmdbAuth(): { token?: string; apiKey?: string } {
+  const token = process.env.TMDB_API_READ_ACCESS_TOKEN?.trim();
+  if (token) return { token };
+  const apiKey = process.env.TMDB_API_KEY?.trim();
+  return apiKey ? { apiKey } : {};
 }
 
 function asString(value: unknown): string | undefined {
@@ -149,12 +156,15 @@ export function mapTmdbMedia(payload: TmdbMedia, categoryOverride?: MediaCategor
 }
 
 async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T | null> {
-  const token = process.env.TMDB_API_READ_ACCESS_TOKEN;
-  if (!token) return null;
+  const auth = getTmdbAuth();
+  if (!auth.token && !auth.apiKey) return null;
   const url = new URL(`${TMDB_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  if (auth.apiKey) url.searchParams.set("api_key", auth.apiKey);
   try {
-    const response = await fetch(url, { headers: { accept: "application/json", Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(TMDB_REQUEST_TIMEOUT), next: { revalidate: 900 } });
+    const headers: HeadersInit = { accept: "application/json" };
+    if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(TMDB_REQUEST_TIMEOUT), next: { revalidate: 900 } });
     if (!response.ok) return null;
     return await response.json() as T;
   } catch {
