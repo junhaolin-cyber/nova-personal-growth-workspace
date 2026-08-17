@@ -68,6 +68,7 @@ export type RecommendationBase = {
   titleEn: string;
   coverLabel: string;
   coverTone: string;
+  posterUrl?: string;
   difficulty: EnglishLevel;
   topics: string[];
   accent: Exclude<Accent, "any"> | "mixed";
@@ -108,4 +109,3 @@ export type EnglishLearningState = {
   learningRecords: Record<string, DailyLearningRecord>;
   recommendationState: Record<string, RecommendationState>;
 };
-

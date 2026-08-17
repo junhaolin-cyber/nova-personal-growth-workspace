@@ -111,4 +111,22 @@ export const seriesRecommendations: SeriesRecommendation[] = [
   { ...baseRecommendation("series-006", "series", "小谢尔顿", "Young Sheldon", "SHELDON", "from-[#E9E5FA] to-[#CEC5F1]", "intermediate", ["喜剧", "日常生活"], "us", "天才少年 Sheldon 在家庭和校园中成长的故事。", "适合学习日常叙事和表达观点。", ["I suppose", "that's the point"]), genre: "喜剧", episodeMinutes: 22, seasons: 7, url: "https://www.imdb.com/title/tt6226232/" },
 ];
 
-export const recommendationData: EnglishRecommendation[] = [...speechRecommendations, ...movieRecommendations, ...seriesRecommendations];
+const recommendationPosterUrls: Record<string, string> = {
+  "movie-001": "https://image.tmdb.org/t/p/w500/oAZXx2Zt8Ikrm3BpLMsXYHRabWM.jpg",
+  "movie-002": "https://image.tmdb.org/t/p/w500/vxj2k0168d7K3pih7Aw6kqvvLcN.jpg",
+  "movie-003": "https://image.tmdb.org/t/p/w500/1v1AZTI4QM2c6PYcm446RXDkZQu.jpg",
+  "movie-004": "https://image.tmdb.org/t/p/w500/9H4jcc4GAgv1tPBMYEhl2rlP3pb.jpg",
+  "movie-005": "https://image.tmdb.org/t/p/w500/vMURwcHmqCoWQHhJtMs8nTC2ij8.jpg",
+  "movie-006": "https://image.tmdb.org/t/p/w500/cR2bQBza2KdQ8N1qXigzzbKNk9E.jpg",
+  "series-001": "https://image.tmdb.org/t/p/w500/iDdFfZB5sexPhDOvacEhWWvgxel.jpg",
+  "series-002": "https://image.tmdb.org/t/p/w500/7aR5985sE8CacO3yQMK5x57qLf3.jpg",
+  "series-003": "https://image.tmdb.org/t/p/w500/u3Ow37NCmHAgRKUxyEBF9yCUloX.jpg",
+  "series-004": "https://image.tmdb.org/t/p/w500/qpN9Sl35iNcOUTJdQYPObvdRQXt.jpg",
+  "series-005": "https://image.tmdb.org/t/p/w500/jfA1G3guanPOFhwUzJsargpmB7F.jpg",
+  "series-006": "https://image.tmdb.org/t/p/w500/n2sszgWewoknQjtN7DYgqWVIrlm.jpg",
+};
+
+export const recommendationData: EnglishRecommendation[] = [...speechRecommendations, ...movieRecommendations, ...seriesRecommendations].map((item) => {
+  const posterUrl = recommendationPosterUrls[item.id];
+  return posterUrl ? { ...item, posterUrl } : item;
+});

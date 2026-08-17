@@ -14,6 +14,7 @@ export function RecommendationCard({ item, state, onToggleFavorite, onToggleWatc
   return (
     <article className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-card">
       <div className={`relative flex h-36 items-end bg-gradient-to-br ${item.coverTone} p-4`}>
+        {item.posterUrl ? <img src={item.posterUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div className="absolute right-4 top-4 rounded-xl bg-white/75 px-2.5 py-1 text-[11px] font-bold text-ink backdrop-blur">{item.coverLabel}</div>
         <div className="max-w-[85%] text-white"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/75">{item.type === "speech" ? "演讲" : item.type === "movie" ? "电影" : "电视剧"}</p><p className="mt-1 line-clamp-2 text-xl font-extrabold leading-tight">{item.titleZh}</p></div>
       </div>
