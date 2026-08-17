@@ -22,9 +22,9 @@ const brandVisuals: Record<string, PlaceholderVisual> = {
 };
 
 const kindVisuals: Record<TrendItem["kind"], PlaceholderVisual> = {
-  trend: { name: "NOVA TREND", monogram: "N", background: "#E8E5FB", surface: "#FAF8FF", foreground: "#433A78", accent: "#7968C7", motif: "editorial" },
+  trend: { name: "LIN TREND", monogram: "L", background: "#E8E5FB", surface: "#FAF8FF", foreground: "#433A78", accent: "#7968C7", motif: "editorial" },
   new: { name: "NEW DROP", monogram: "＋", background: "#F7E6E1", surface: "#FFF9F7", foreground: "#713F35", accent: "#C87862", motif: "blocks" },
-  outfit: { name: "NOVA STYLE", monogram: "✦", background: "#E4EFEA", surface: "#F9FFFC", foreground: "#315947", accent: "#5C9A78", motif: "sweep" },
+  outfit: { name: "LIN STYLE", monogram: "✦", background: "#E4EFEA", surface: "#F9FFFC", foreground: "#315947", accent: "#5C9A78", motif: "sweep" },
   article: { name: "STYLE NOTES", monogram: "A", background: "#E6EDF4", surface: "#FAFCFF", foreground: "#344B61", accent: "#6F94B5", motif: "editorial" },
   video: { name: "WATCH LIST", monogram: "▶", background: "#F1E8F6", surface: "#FEFAFF", foreground: "#573B68", accent: "#9A6CB1", motif: "rings" },
 };

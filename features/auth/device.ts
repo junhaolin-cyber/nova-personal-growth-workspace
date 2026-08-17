@@ -29,7 +29,7 @@ export function getOrCreateDeviceId(userId: string): string {
 
 export function getCurrentDeviceInfo(): DeviceInfo {
   if (typeof navigator === "undefined") {
-    return { deviceName: "NOVA 网页端", deviceType: "desktop", platform: "未知平台" };
+    return { deviceName: "LIN 网页端", deviceType: "desktop", platform: "未知平台" };
   }
 
   const userAgent = navigator.userAgent;
@@ -42,7 +42,7 @@ export function getCurrentDeviceInfo(): DeviceInfo {
   else if (/Linux/i.test(userAgent)) platform = "Linux";
 
   return {
-    deviceName: isMobile ? `NOVA 移动端 · ${platform}` : `NOVA 网页端 · ${platform}`,
+    deviceName: isMobile ? `LIN 移动端 · ${platform}` : `LIN 网页端 · ${platform}`,
     deviceType: isMobile ? "mobile" : "desktop",
     platform,
   };

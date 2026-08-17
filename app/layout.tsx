@@ -3,10 +3,10 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "NOVA — Personal Growth Workspace",
+  title: "LIN — Personal Growth Workspace",
   description: "A calm, intelligent workspace for your everyday growth.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "NOVA" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "LIN" },
 };
 
 export const viewport: Viewport = { themeColor: "#f6f7f9", viewportFit: "cover" };

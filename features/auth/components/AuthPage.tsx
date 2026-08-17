@@ -107,7 +107,7 @@ export function AuthPage({ initialMode, nextPath, initialError }: AuthPageProps)
       } else {
         const result = await supabase.auth.updateUser({ password });
         if (result.error) throw result.error;
-        setNotice("密码已重置，请继续使用 NOVA。");
+        setNotice("密码已重置，请继续使用 LIN。");
         window.setTimeout(() => {
           router.replace(safeNext);
           router.refresh();
@@ -136,15 +136,15 @@ export function AuthPage({ initialMode, nextPath, initialError }: AuthPageProps)
   };
 
   const isPasswordMode = mode === "login" || mode === "register" || mode === "reset";
-  const title = mode === "login" ? "欢迎回到 NOVA" : mode === "register" ? "创建你的 NOVA 账号" : mode === "forgot" ? "找回密码" : "设置新密码";
+  const title = mode === "login" ? "欢迎回到 LIN" : mode === "register" ? "创建你的 LIN 账号" : mode === "forgot" ? "找回密码" : "设置新密码";
   const subtitle = mode === "login" ? "登录后继续使用你的个人工作台。" : mode === "register" ? "使用邮箱创建属于你的个人空间。" : mode === "forgot" ? "输入注册邮箱，我们会发送密码重置链接。" : "请设置一个新的登录密码。";
 
   return <main className="min-h-screen bg-canvas px-5 py-8 text-ink sm:px-8 sm:py-12">
     <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-[1080px] items-center justify-center">
       <section className="grid w-full overflow-hidden rounded-[32px] border border-line bg-white shadow-card lg:grid-cols-[.9fr_1.1fr]">
-        <div className="hidden flex-col justify-between bg-[#DCDDED] p-10 lg:flex"><div><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-[13px] bg-ink text-white"><ShieldCheck size={20} /></span><span className="text-lg font-extrabold">NOVA</span></div><p className="mt-16 max-w-xs text-3xl font-extrabold leading-tight">让长期成长，<br />从一次安全登录开始。</p><p className="mt-5 max-w-xs text-sm leading-6 text-muted">你的账号只负责身份与设备信息，现有业务数据仍保留在本地。</p></div><p className="text-xs text-muted">个人成长工作台 · 账号基础设施</p></div>
+        <div className="hidden flex-col justify-between bg-[#DCDDED] p-10 lg:flex"><div><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-[13px] bg-ink text-white"><ShieldCheck size={20} /></span><span className="text-lg font-extrabold">LIN</span></div><p className="mt-16 max-w-xs text-3xl font-extrabold leading-tight">让长期成长，<br />从一次安全登录开始。</p><p className="mt-5 max-w-xs text-sm leading-6 text-muted">你的账号只负责身份与设备信息，现有业务数据仍保留在本地。</p></div><p className="text-xs text-muted">个人成长工作台 · 账号基础设施</p></div>
         <div className="p-6 sm:p-10 lg:p-12">
-          <div className="mb-8 flex items-center justify-between"><div><p className="text-sm font-bold text-accent">NOVA 账号</p><h1 className="mt-3 text-3xl font-extrabold tracking-[-0.04em]">{title}</h1><p className="mt-2 text-sm text-muted">{subtitle}</p></div><span className="grid size-11 place-items-center rounded-2xl bg-[#F0F0FF] text-accent lg:hidden"><KeyRound size={19} /></span></div>
+          <div className="mb-8 flex items-center justify-between"><div><p className="text-sm font-bold text-accent">LIN 账号</p><h1 className="mt-3 text-3xl font-extrabold tracking-[-0.04em]">{title}</h1><p className="mt-2 text-sm text-muted">{subtitle}</p></div><span className="grid size-11 place-items-center rounded-2xl bg-[#F0F0FF] text-accent lg:hidden"><KeyRound size={19} /></span></div>
           {notice ? <div className="mb-5 flex items-start gap-2 rounded-2xl border border-[#CDE7D5] bg-[#F3FBF5] px-4 py-3 text-sm leading-6 text-[#43845D]"><CheckCircle2 className="mt-0.5 shrink-0" size={17} /><span>{notice}</span></div> : null}
           {error ? <div className="mb-5 flex items-start gap-2 rounded-2xl border border-[#F0D2BB] bg-[#FFF8F2] px-4 py-3 text-sm leading-6 text-[#9C5D32]"><AlertCircle className="mt-0.5 shrink-0" size={17} /><span>{error}</span></div> : null}
           {verificationEmail && notice ? <button type="button" onClick={() => void resendVerification()} disabled={isSubmitting} className="mb-5 text-sm font-bold text-accent disabled:opacity-50">{isSubmitting ? "正在发送…" : "重新发送验证邮件"}</button> : null}

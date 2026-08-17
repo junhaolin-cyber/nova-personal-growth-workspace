@@ -15,8 +15,8 @@ export function ExerciseDataManager({ data, onImport }: ExerciseDataManagerProps
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [preview, setPreview] = React.useState<ExerciseData>();
   const [error, setError] = React.useState("");
-  const exportJson = () => downloadExerciseFile(createExerciseJson(data), "nova-运动打卡备份.json", "application/json;charset=utf-8");
-  const exportCsv = () => downloadExerciseFile(createExerciseCsv(data.records, data.types), "nova-运动记录.csv", "text/csv;charset=utf-8");
+  const exportJson = () => downloadExerciseFile(createExerciseJson(data), "lin-运动打卡备份.json", "application/json;charset=utf-8");
+  const exportCsv = () => downloadExerciseFile(createExerciseCsv(data.records, data.types), "lin-运动记录.csv", "text/csv;charset=utf-8");
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -32,7 +32,7 @@ export function ExerciseDataManager({ data, onImport }: ExerciseDataManagerProps
       if (!normalized.types.length && !normalized.records.length) { setError("导入文件中没有可识别的数据。"); return; }
       setPreview(normalized);
     } catch {
-      setError("JSON 文件无法解析，请选择 NOVA 导出的运动备份。");
+      setError("JSON 文件无法解析，请选择 LIN 导出的运动备份。");
     }
   };
   const selectMode = (mode: "merge" | "replace") => {

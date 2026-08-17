@@ -44,7 +44,7 @@ export function UserMenu({ account, devices, isLoading, error, loadDevices, upda
   if (isLoading) return <div className="hidden h-10 w-28 animate-pulse rounded-xl bg-white/70 sm:block" aria-label="正在读取账号" />;
   if (!account) return <Link href="/auth?mode=login" className="inline-flex items-center gap-2 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">登录账号</Link>;
 
-  const displayName = account.profile?.display_name || (account.user.user_metadata.display_name as string | undefined) || account.user.email?.split("@")[0] || "NOVA 用户";
+  const displayName = account.profile?.display_name || (account.user.user_metadata.display_name as string | undefined) || account.user.email?.split("@")[0] || "LIN 用户";
   const email = account.user.email ?? "未提供邮箱";
   const initial = displayName.trim().charAt(0).toUpperCase() || "N";
 

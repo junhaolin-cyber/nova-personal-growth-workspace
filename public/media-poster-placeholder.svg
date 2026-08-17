@@ -3,7 +3,7 @@
   <rect width="800" height="1100" rx="36" fill="url(#poster)"/>
   <circle cx="585" cy="230" r="180" fill="#B9A8ED" fill-opacity="0.35"/><circle cx="170" cy="920" r="220" fill="#A8CBD0" fill-opacity="0.3"/>
   <path d="M0 780C170 690 300 730 430 850C555 966 670 985 800 920V1100H0V780Z" fill="#FFFFFF" fill-opacity="0.5"/>
-  <text x="68" y="128" fill="#7169B1" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="5">NOVA / MEDIA</text>
+  <text x="68" y="128" fill="#7169B1" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="5">LIN / MEDIA</text>
   <text x="68" y="930" fill="#1D1D22" font-family="Arial, sans-serif" font-size="62" font-weight="800">影视资料</text>
   <text x="72" y="982" fill="#557B9C" font-family="Arial, sans-serif" font-size="25" font-weight="600">公开资料封面占位</text>
 </svg>

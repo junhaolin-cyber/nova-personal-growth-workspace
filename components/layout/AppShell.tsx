@@ -49,7 +49,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
   const firstBatchMigration = useFirstBatchMigration(auth.account);
   const active = activeModule ?? (pathname === "/" ? "dashboard" : pathname.slice(1));
   const isZh = locale === "zh";
-  const accountName = auth.account?.profile?.display_name || (auth.account?.user.user_metadata.display_name as string | undefined) || auth.account?.user.email?.split("@")[0] || "NOVA 用户";
+  const accountName = auth.account?.profile?.display_name || (auth.account?.user.user_metadata.display_name as string | undefined) || auth.account?.user.email?.split("@")[0] || "LIN 用户";
   const accountInitial = accountName.charAt(0).toUpperCase() || "N";
 
   React.useEffect(() => {
@@ -89,7 +89,7 @@ export function AppShell({ activeModule }: { activeModule?: string }) {
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[252px] border-r border-[#C9CCDE] bg-[#DCDDED] px-5 py-6 lg:flex lg:flex-col">
         <Link href="/" className="mb-10 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span>
-          <span className="font-sans text-[17px] font-extrabold tracking-[-0.02em]">NOVA</span>
+          <span className="font-sans text-[17px] font-extrabold tracking-[-0.02em]">LIN</span>
         </Link>
         <NavigationList active={active} isZh={isZh} />
         <div className="mt-auto space-y-1">
@@ -151,7 +151,7 @@ function MobileNavigation({ active, isZh, onClose }: { active: string; isZh: boo
     <button type="button" className="absolute inset-0 z-0 bg-ink/20" onClick={onClose} aria-label="关闭导航遮罩" />
     <aside className="relative z-10 flex h-full w-[min(21rem,86vw)] flex-col border-r border-[#C9CCDE] bg-[#DCDDED] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] shadow-2xl">
       <div className="mb-8 flex items-center justify-between">
-        <Link href="/" onClick={onClose} className="flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span><span className="text-[17px] font-extrabold">NOVA</span></Link>
+        <Link href="/" onClick={onClose} className="flex items-center gap-3 px-2"><span className="grid size-9 place-items-center rounded-[12px] bg-ink text-white shadow-sm"><Sparkles size={18} strokeWidth={2.3} /></span><span className="text-[17px] font-extrabold">LIN</span></Link>
         <button type="button" onClick={onClose} className="grid size-10 place-items-center rounded-xl bg-white/70 text-muted" aria-label="关闭导航"><X size={18} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto"><NavigationList active={active} isZh={isZh} onNavigate={onClose} /></div>
