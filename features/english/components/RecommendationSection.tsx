@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Clapperboard, Mic2, SlidersHorizontal, Tv } from "lucide-react";
 import { RecommendationCard } from "./RecommendationCard";
+import { getDateKey } from "../logic/date";
+import { getDailySpeechRecommendations, getWeeklyMovieRecommendations, getWeeklySeriesRecommendations } from "../logic/recommendations";
 import type { EnglishRecommendation, RecommendationFilter, RecommendationState, RecommendationType } from "../types";
 
 const tabs: Array<{ key: RecommendationType; label: string; icon: typeof Mic2 }> = [
@@ -15,7 +17,13 @@ const filters: Array<{ key: RecommendationFilter; label: string }> = [
 export function RecommendationSection({ items, recommendationState, onToggleFavorite, onToggleWatched }: { items: EnglishRecommendation[]; recommendationState: Record<string, RecommendationState>; onToggleFavorite: (id: string) => void; onToggleWatched: (id: string) => void }) {
   const [activeTab, setActiveTab] = React.useState<RecommendationType>("speech");
   const [filter, setFilter] = React.useState<RecommendationFilter>("all");
-  const visibleItems = items.filter((item) => item.type === activeTab && (filter === "all" || item.difficulty === filter || item.accent === filter));
+  const [dateKey] = React.useState(() => getDateKey());
+  const filteredItems = items.filter((item) => item.type === activeTab && (filter === "all" || item.difficulty === filter || item.accent === filter));
+  const visibleItems = activeTab === "speech"
+    ? getDailySpeechRecommendations(filteredItems.filter((item): item is Extract<EnglishRecommendation, { type: "speech" }> => item.type === "speech"), dateKey)
+    : activeTab === "movie"
+      ? getWeeklyMovieRecommendations(filteredItems.filter((item): item is Extract<EnglishRecommendation, { type: "movie" }> => item.type === "movie"), dateKey)
+      : getWeeklySeriesRecommendations(filteredItems.filter((item): item is Extract<EnglishRecommendation, { type: "series" }> => item.type === "series"), dateKey);
   return (
     <section className="rounded-[24px] border border-line bg-white p-6 shadow-card sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2 text-xs font-semibold text-accent"><SlidersHorizontal size={15} />精选推荐</div><h2 className="mt-2 text-2xl font-extrabold">把英语放进真实语境里</h2><p className="mt-2 text-sm text-muted">先从你感兴趣的内容开始，慢慢建立自己的英语输入库。</p></div><span className="rounded-xl bg-canvas px-3 py-2 text-xs font-semibold text-muted">本地精选内容</span></div>
