@@ -5,6 +5,17 @@ function stableScore(value: string) {
   return [...value].reduce((score, character) => (score * 31 + character.charCodeAt(0)) % 1000003, 7);
 }
 
+function dateSeed(date: string) {
+  const parsed = new Date(`${date}T12:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? 0 : Math.floor(parsed.getTime() / 86400000);
+}
+
+function rotateByDate<T>(items: T[], date: string) {
+  if (items.length < 2) return items;
+  const offset = dateSeed(date) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 export function createDailyWordPlan(words: EnglishWord[], state: EnglishLearningState, date: string, settings: EnglishLearningSettings): DailyWordPlan {
   const limit = Math.max(1, Math.min(settings.dailyWordCount, words.length));
   const recentIds = new Set(
@@ -23,11 +34,11 @@ export function createDailyWordPlan(words: EnglishWord[], state: EnglishLearning
     });
   const newWords = words
     .filter((word) => !state.wordProgress[word.id]?.firstLearnedAt && !recentIds.has(word.id))
-    .sort((a, b) => stableScore(`${date}:${a.id}`) - stableScore(`${date}:${b.id}`));
+    .sort((a, b) => stableScore(a.id) - stableScore(b.id) || a.id.localeCompare(b.id));
   const fallbackWords = words
     .filter((word) => !dueWords.some((item) => item.id === word.id) && !newWords.some((item) => item.id === word.id))
-    .sort((a, b) => stableScore(`${date}:fallback:${a.id}`) - stableScore(`${date}:fallback:${b.id}`));
-  const wordIds = [...dueWords, ...newWords, ...fallbackWords].slice(0, limit).map((word) => word.id);
+    .sort((a, b) => stableScore(`fallback:${a.id}`) - stableScore(`fallback:${b.id}`) || a.id.localeCompare(b.id));
+  const wordIds = [...dueWords, ...rotateByDate(newWords, date), ...rotateByDate(fallbackWords, date)].slice(0, limit).map((word) => word.id);
 
   return {
     date,

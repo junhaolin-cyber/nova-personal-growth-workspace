@@ -156,7 +156,7 @@ function scanEnglish(): LocalRecord[] {
     wrongCount: progress.wrongCount,
     isFavorite: progress.isFavorite,
     isInVocabularyBook: progress.isInVocabularyBook,
-  }, ENGLISH_STORAGE_KEY, progress.firstLearnedAt ?? new Date().toISOString(), progress.lastLearnedAt)));
+  }, ENGLISH_STORAGE_KEY, progress.firstLearnedAt ?? new Date().toISOString(), new Date().toISOString())));
 
   Object.entries(state.dailyPlans).forEach(([date, plan]) => records.push(createLocalRecord("english", "english-daily-plan", date, {
     planDate: plan.date,
@@ -425,6 +425,10 @@ export async function pullAndMergeThirdBatch(client: SupabaseClient<Database>, u
     const previous = metadata[key];
     if (previous && compareVersionedSnapshots(rowSnapshot(envelope.row), previous) < 0) return;
     const localRecord = local.get(key);
+    if (envelope.table.startsWith("english_") && previous && localRecord && signature(localRecord.payload) !== previous.signature) {
+      skippedLocalKeys.add(key);
+      return;
+    }
     if (!previous && localRecord && !envelope.row.deleted_at && shouldPreserveUntrackedLocal(localRecord)) { skippedLocalKeys.add(key); return; }
     applicable.push(envelope);
   });

@@ -110,9 +110,9 @@ export function EnglishLearning() {
     const dailyWordCount = Number(event.target.value);
     setState((current) => {
       const settings = { ...current.settings, dailyWordCount };
-      const nextPlan = createDailyWordPlan(englishWords, { ...current, settings }, today, settings);
       const previousPlan = current.dailyPlans[today];
-      nextPlan.completedWordIds = previousPlan?.completedWordIds.filter((id) => nextPlan.wordIds.includes(id)) ?? [];
+      if (previousPlan?.wordIds.length && (previousPlan.startedAt || previousPlan.completedWordIds.length > 0)) return { ...current, settings };
+      const nextPlan = createDailyWordPlan(englishWords, { ...current, settings }, today, settings);
       return { ...current, settings, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } };
     });
     setCurrentIndex(0);
