@@ -18,6 +18,12 @@ function stableOffset(date: string, index: number, total: number): number {
   return total === 0 ? 0 : sum % total;
 }
 
+function rotateByDate<T>(items: T[], date: string): T[] {
+  if (items.length < 2) return items;
+  const offset = stableOffset(date, 0, items.length);
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 export function isFinanceReviewDue(nextReviewAt: string | undefined, today: string): boolean {
   return Boolean(nextReviewAt && dateValue(nextReviewAt) <= dateValue(today));
 }
@@ -31,11 +37,22 @@ export function createFinanceDailyPlan(knowledge: FinanceKnowledge[], state: Fin
   const recentSet = new Set(recentIds);
   const preferred = settings.preferredCategory === "不限" ? knowledge : knowledge.filter((item) => item.category === settings.preferredCategory);
   const pool = preferred.length ? preferred : knowledge;
-  const candidates = [...pool].sort((a, b) => stableOffset(date, Number(a.id.slice(-2)), pool.length) - stableOffset(date, Number(b.id.slice(-2)), pool.length));
-  const freshIds = candidates.filter((item) => !recentSet.has(item.id) && state.progress[item.id]?.status !== "已掌握").map((item) => item.id);
-  const fallbackIds = candidates.filter((item) => !recentSet.has(item.id)).map((item) => item.id);
-  const selected: string[] = [];
-  [...dueIds, ...freshIds, ...fallbackIds].forEach((id) => { if (!selected.includes(id) && selected.length < targetCount) selected.push(id); });
+  const candidates = rotateByDate([...pool].sort((a, b) => a.id.localeCompare(b.id)), date);
+  const dueSet = new Set(dueIds);
+  const newIds = candidates.filter((item) => !dueSet.has(item.id) && !recentSet.has(item.id) && !state.progress[item.id]?.firstLearnedAt).map((item) => item.id);
+  const freshIds = candidates.filter((item) => !dueSet.has(item.id) && !recentSet.has(item.id) && state.progress[item.id]?.status !== "已掌握").map((item) => item.id);
+  const fallbackIds = candidates.filter((item) => !dueSet.has(item.id) && !recentSet.has(item.id)).map((item) => item.id);
+  const reviewTarget = dueIds.length && newIds.length ? Math.min(dueIds.length, Math.max(1, Math.floor(targetCount * 0.6))) : Math.min(dueIds.length, targetCount);
+  const selectedReviewIds = dueIds.slice(0, reviewTarget);
+  const selectedNewIds = newIds.filter((id) => !selectedReviewIds.includes(id)).slice(0, targetCount - selectedReviewIds.length);
+  const remainingSlots = targetCount - selectedReviewIds.length - selectedNewIds.length;
+  const fillReviewIds = dueIds.filter((id) => !selectedReviewIds.includes(id)).slice(0, remainingSlots);
+  const selectedIds = new Set([...selectedReviewIds, ...selectedNewIds, ...fillReviewIds]);
+  const fillFreshIds = freshIds.filter((id) => !selectedIds.has(id)).slice(0, targetCount - selectedIds.size);
+  fillFreshIds.forEach((id) => selectedIds.add(id));
+  const fillFallbackIds = fallbackIds.filter((id) => !selectedIds.has(id)).slice(0, targetCount - selectedIds.size);
+  fillFallbackIds.forEach((id) => selectedIds.add(id));
+  const selected = [...selectedReviewIds, ...selectedNewIds, ...fillReviewIds, ...fillFreshIds, ...fillFallbackIds].slice(0, targetCount);
   const reviewKnowledgeIds = dueIds.filter((id) => selected.includes(id));
   return { date, knowledgeIds: selected, reviewKnowledgeIds, completedKnowledgeIds: [], completedQuizIds: [] };
 }
