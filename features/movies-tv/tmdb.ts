@@ -4,6 +4,7 @@ import type { MediaCategory, MediaDetail, MediaItem, MediaType } from "./types";
 type TmdbMedia = {
   id?: unknown;
   media_type?: unknown;
+  original_language?: unknown;
   title?: unknown;
   name?: unknown;
   original_title?: unknown;
@@ -155,7 +156,7 @@ export function mapTmdbMedia(payload: TmdbMedia, categoryOverride?: MediaCategor
   };
 }
 
-async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T | null> {
+async function tmdbFetch<T>(path: string, params: Record<string, string> = {}, revalidate = 900): Promise<T | null> {
   const auth = getTmdbAuth();
   if (!auth.token && !auth.apiKey) return null;
   const url = new URL(`${TMDB_BASE_URL}${path}`);
@@ -164,7 +165,7 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
   try {
     const headers: HeadersInit = { accept: "application/json" };
     if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(TMDB_REQUEST_TIMEOUT), next: { revalidate: 900 } });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(TMDB_REQUEST_TIMEOUT), next: { revalidate } });
     if (!response.ok) return null;
     return await response.json() as T;
   } catch {
@@ -204,4 +205,18 @@ export async function getMediaDetail(id: number, mediaType: MediaType): Promise<
   const item = payload ? mapTmdbMedia({ ...payload, media_type: mediaType }, undefined) : null;
   if (!item) return null;
   return { ...item, providers: payload ? getProviders(payload) : [] };
+}
+
+export async function discoverEnglishTrending(scope: "movie" | "tv"): Promise<MediaItem[]> {
+  if (!hasTmdbToken()) return [];
+  const mediaType = scope === "movie" ? "movie" : "tv";
+  const payload = await tmdbFetch<TmdbListResponse>(`/trending/${mediaType}/day`, { language: "zh-CN" }, 21600);
+  const results = Array.isArray(payload?.results) ? payload.results : [];
+  return results.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const media = item as TmdbMedia;
+    if (media.original_language !== "en") return [];
+    const mapped = mapTmdbMedia({ ...media, media_type: mediaType }, mediaType === "tv" ? "tv" : "movie");
+    return mapped ? [mapped] : [];
+  }).slice(0, 3);
 }
