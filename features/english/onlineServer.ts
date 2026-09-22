@@ -108,7 +108,7 @@ export async function getOnlineSpeechRecommendations(): Promise<OnlineRecommenda
     channelId: TED_CHANNEL_ID,
     type: "video",
     order: "date",
-    maxResults: "12",
+    maxResults: "25",
     publishedAfter: youtubeDateDaysAgo(90),
     videoCaption: "closedCaption",
     relevanceLanguage: "en",
@@ -125,7 +125,7 @@ export async function getOnlineSpeechRecommendations(): Promise<OnlineRecommenda
   const videosPayload = await youtubeFetch("/videos", {
     part: "snippet,statistics,contentDetails",
     id: videoIds.join(","),
-    maxResults: "12",
+    maxResults: "25",
   }, apiKey);
   const videoItems = Array.isArray(asRecord(videosPayload)?.items) ? asRecord(videosPayload)?.items as unknown[] : [];
   const ranked = videoItems.map((item) => {
@@ -141,7 +141,7 @@ export async function getOnlineSpeechRecommendations(): Promise<OnlineRecommenda
     const recencyScore = Math.max(0, 1 - ageDays / 90);
     const popularityScore = Math.log10(viewCount + 1) / 10;
     return { id, title: asString(snippet?.title), description: asString(snippet?.description), channelTitle: asString(snippet?.channelTitle), thumbnail, publishedAt, score: recencyScore * 0.55 + popularityScore * 0.45 };
-  }).filter((item): item is typeof item & { id: string; title: string; thumbnail: string } => Boolean(item.id && item.title && item.thumbnail)).sort((left, right) => right.score - left.score).slice(0, 3);
+  }).filter((item): item is typeof item & { id: string; title: string; thumbnail: string } => Boolean(item.id && item.title && item.thumbnail)).sort((left, right) => right.score - left.score).slice(0, 9);
 
   return ranked.map((item) => ({
     id: `youtube-${item.id}`,

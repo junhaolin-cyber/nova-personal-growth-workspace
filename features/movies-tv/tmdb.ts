@@ -218,5 +218,5 @@ export async function discoverEnglishTrending(scope: "movie" | "tv"): Promise<Me
     if (media.original_language !== "en") return [];
     const mapped = mapTmdbMedia({ ...media, media_type: mediaType }, mediaType === "tv" ? "tv" : "movie");
     return mapped ? [mapped] : [];
-  }).slice(0, 3);
+  }).slice(0, 9);
 }

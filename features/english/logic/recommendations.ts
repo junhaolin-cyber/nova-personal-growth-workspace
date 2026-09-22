@@ -1,6 +1,6 @@
 import type { EnglishRecommendation, MovieRecommendation, SeriesRecommendation, SpeechRecommendation } from "../types";
 
-const RECOMMENDATION_LIMIT = 3;
+const RECOMMENDATION_LIMIT = 9;
 const DAY_MS = 86400000;
 
 function parseDateKey(dateKey: string) {
