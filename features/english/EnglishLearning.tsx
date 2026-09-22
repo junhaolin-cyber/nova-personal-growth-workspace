@@ -25,16 +25,33 @@ function emptyProgress(wordId: string): WordProgress {
 }
 
 export function EnglishLearning() {
-  const [today] = React.useState(() => getDateKey());
+  const [today, setToday] = React.useState(() => getDateKey());
   const [state, setState] = React.useState<EnglishLearningState>(() => createDefaultEnglishState());
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [notice, setNotice] = React.useState("");
 
   React.useEffect(() => {
+    const refreshToday = () => {
+      const nextToday = getDateKey();
+      setToday((currentToday) => currentToday === nextToday ? currentToday : nextToday);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshToday();
+    };
+    window.addEventListener("focus", refreshToday);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshToday);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  React.useEffect(() => {
     const stored = loadEnglishState();
     const plan = getOrCreateDailyPlan(englishWords, stored, today);
     setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
+    setCurrentIndex(0);
     setIsHydrated(true);
   }, [today]);
 

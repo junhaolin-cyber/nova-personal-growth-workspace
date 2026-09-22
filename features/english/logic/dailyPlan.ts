@@ -38,13 +38,20 @@ export function createDailyWordPlan(words: EnglishWord[], state: EnglishLearning
   const fallbackWords = words
     .filter((word) => !dueWords.some((item) => item.id === word.id) && !newWords.some((item) => item.id === word.id))
     .sort((a, b) => stableScore(`fallback:${a.id}`) - stableScore(`fallback:${b.id}`) || a.id.localeCompare(b.id));
-  const wordIds = [...dueWords, ...rotateByDate(newWords, date), ...rotateByDate(fallbackWords, date)].slice(0, limit).map((word) => word.id);
+  const reviewTarget = Math.min(dueWords.length, Math.floor(limit * 0.6));
+  const selectedReviewWords = dueWords.slice(0, reviewTarget);
+  const selectedNewWords = rotateByDate(newWords, date).slice(0, limit - selectedReviewWords.length);
+  const remainingSlots = limit - selectedReviewWords.length - selectedNewWords.length;
+  const fillReviewWords = dueWords.slice(reviewTarget, reviewTarget + remainingSlots);
+  const fillFallbackWords = rotateByDate(fallbackWords, date).slice(0, remainingSlots - fillReviewWords.length);
+  const plannedReviewWords = [...selectedReviewWords, ...fillReviewWords];
+  const wordIds = [...selectedReviewWords, ...selectedNewWords, ...fillReviewWords, ...fillFallbackWords].slice(0, limit).map((word) => word.id);
 
   return {
     date,
     wordIds,
     completedWordIds: [],
-    reviewedWordIds: dueWords.slice(0, limit).map((word) => word.id),
+    reviewedWordIds: plannedReviewWords.map((word) => word.id),
   };
 }
 
