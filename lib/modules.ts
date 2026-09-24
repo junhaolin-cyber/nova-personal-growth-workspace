@@ -3,7 +3,7 @@ import { CheckSquare2, CircleDollarSign, Clapperboard, Compass, Dumbbell, Langua
 
 export type ModuleDefinition = { slug: string; label: string; labelEn: string; description: string; descriptionEn: string; icon: LucideIcon; tone: string; iconColor: string; meta: string; metaEn: string };
 
-export const modules: ModuleDefinition[] = [
+const allModules: ModuleDefinition[] = [
   { slug: "today", label: "今日计划", labelEn: "Today", description: "把今天变得清晰而可执行", descriptionEn: "Make today clear and actionable", icon: CheckSquare2, tone: "bg-[#E7E9FF] text-[#5452C7]", iconColor: "text-[#5E5CE6]", meta: "3 项待完成", metaEn: "3 open" },
   { slug: "english", label: "英语学习", labelEn: "English", description: "每天一点，持续积累", descriptionEn: "A little every day", icon: Languages, tone: "bg-[#DDEFE4] text-[#43845D]", iconColor: "text-[#43845D]", meta: "连续 12 天", metaEn: "12 day streak" },
   { slug: "speaking", label: "AI 口语", labelEn: "AI Speaking", description: "和 AI 自然地聊一会儿", descriptionEn: "Practice naturally with AI", icon: Mic2, tone: "bg-[#F7E5D5] text-[#B26F3C]", iconColor: "text-[#B26F3C]", meta: "开始练习", metaEn: "Start a session" },
@@ -16,7 +16,9 @@ export const modules: ModuleDefinition[] = [
   { slug: "movies-tv", label: "电影电视", labelEn: "Movies & TV", description: "记录值得观看的好故事", descriptionEn: "Keep track of stories worth watching", icon: Clapperboard, tone: "bg-[#E4EDF5] text-[#557B9C]", iconColor: "text-[#557B9C]", meta: "我的片单", metaEn: "My watchlist" },
 ];
 
-export const moduleMap = Object.fromEntries(modules.map((item) => [item.slug, item]));
+export const modules = allModules.filter((item) => item.slug !== "finance");
+
+export const moduleMap = Object.fromEntries(allModules.map((item) => [item.slug, item]));
 
 export const activeIconShapes: Record<string, string> = {
   today: "rounded-xl",
