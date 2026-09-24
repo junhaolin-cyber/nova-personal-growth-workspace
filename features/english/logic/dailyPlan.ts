@@ -10,9 +10,9 @@ function dateSeed(date: string) {
   return Number.isNaN(parsed.getTime()) ? 0 : Math.floor(parsed.getTime() / 86400000);
 }
 
-function rotateByDate<T>(items: T[], date: string) {
+function rotateByDate<T>(items: T[], date: string, blockSize = 1) {
   if (items.length < 2) return items;
-  const offset = dateSeed(date) % items.length;
+  const offset = (dateSeed(date) * Math.max(1, blockSize)) % items.length;
   return [...items.slice(offset), ...items.slice(0, offset)];
 }
 
@@ -40,7 +40,8 @@ export function createDailyWordPlan(words: EnglishWord[], state: EnglishLearning
     .sort((a, b) => stableScore(`fallback:${a.id}`) - stableScore(`fallback:${b.id}`) || a.id.localeCompare(b.id));
   const reviewTarget = Math.min(dueWords.length, Math.floor(limit * 0.6));
   const selectedReviewWords = dueWords.slice(0, reviewTarget);
-  const selectedNewWords = rotateByDate(newWords, date).slice(0, limit - selectedReviewWords.length);
+  const newWordSlots = limit - selectedReviewWords.length;
+  const selectedNewWords = rotateByDate(newWords, date, newWordSlots).slice(0, newWordSlots);
   const remainingSlots = limit - selectedReviewWords.length - selectedNewWords.length;
   const fillReviewWords = dueWords.slice(reviewTarget, reviewTarget + remainingSlots);
   const fillFallbackWords = rotateByDate(fallbackWords, date).slice(0, remainingSlots - fillReviewWords.length);
