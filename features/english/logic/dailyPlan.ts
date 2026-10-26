@@ -74,29 +74,54 @@ export function getOrCreateDailyPlan(words: EnglishWord[], state: EnglishLearnin
   const existing = state.dailyPlans[date];
   if (!existing?.wordIds.length) return createDailyWordPlan(words, state, date, state.settings);
 
+  const target = Math.max(1, Math.min(state.settings.dailyWordCount, words.length));
+  const wordIdsInDictionary = new Set(words.map((word) => word.id));
   const completedIds = new Set(existing.completedWordIds);
-  const hasStarted = Boolean(existing.startedAt || existing.completedWordIds.length > 0);
-  const invalidUnstartedIds = existing.wordIds.filter((wordId) => !completedIds.has(wordId) && !isEligiblePlanWord(state.wordProgress[wordId], date));
-  if (!invalidUnstartedIds.length) return existing;
-  if (!hasStarted) return createDailyWordPlan(words, state, date, state.settings);
+  const keptIds = new Set<string>();
+  for (const wordId of existing.wordIds) {
+    if (!wordIdsInDictionary.has(wordId) || keptIds.has(wordId)) continue;
+    if (completedIds.has(wordId) || isEligiblePlanWord(state.wordProgress[wordId], date)) keptIds.add(wordId);
+  }
+  const needsReconcile = keptIds.size < target || keptIds.size !== existing.wordIds.length;
+  if (!needsReconcile) return existing;
 
   const replacementPlan = createDailyWordPlan(words, state, date, state.settings);
-  const keptIds = new Set(existing.wordIds.filter((wordId) => completedIds.has(wordId) || isEligiblePlanWord(state.wordProgress[wordId], date)));
   const replacementIds = replacementPlan.wordIds.filter((wordId) => !keptIds.has(wordId));
   let replacementIndex = 0;
+  const emittedIds = new Set<string>();
   const wordIds = existing.wordIds.flatMap((wordId) => {
-    if (completedIds.has(wordId) || isEligiblePlanWord(state.wordProgress[wordId], date)) return [wordId];
+    if (!wordIdsInDictionary.has(wordId) || keptIds.has(wordId)) {
+      if (keptIds.has(wordId) && !emittedIds.has(wordId)) {
+        emittedIds.add(wordId);
+        return [wordId];
+      }
+      return [];
+    }
     while (replacementIndex < replacementIds.length && keptIds.has(replacementIds[replacementIndex])) replacementIndex += 1;
     const replacementId = replacementIds[replacementIndex];
     replacementIndex += 1;
     if (!replacementId) return [];
     keptIds.add(replacementId);
+    emittedIds.add(replacementId);
     return [replacementId];
   });
+  const nextWordIds = [...wordIds];
+  for (const wordId of replacementIds) {
+    if (nextWordIds.length >= target) break;
+    if (!nextWordIds.includes(wordId)) nextWordIds.push(wordId);
+  }
+  const wordIdSet = new Set(nextWordIds);
+  const completedWordIds = existing.completedWordIds.filter((wordId) => wordIdSet.has(wordId));
   const reviewedWordIds = Array.from(new Set([
-    ...existing.reviewedWordIds,
-    ...wordIds.filter((wordId) => isReviewCandidate(state.wordProgress[wordId], date)),
+    ...existing.reviewedWordIds.filter((wordId) => wordIdSet.has(wordId)),
+    ...replacementPlan.reviewedWordIds.filter((wordId) => wordIdSet.has(wordId)),
   ]));
 
-  return { ...existing, wordIds, reviewedWordIds };
+  return {
+    ...existing,
+    wordIds: nextWordIds,
+    completedWordIds,
+    reviewedWordIds,
+    completedAt: completedWordIds.length >= nextWordIds.length && nextWordIds.length > 0 ? existing.completedAt : undefined,
+  };
 }
