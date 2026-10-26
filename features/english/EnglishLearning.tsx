@@ -82,7 +82,10 @@ export function EnglishLearning() {
 
   const plan = state.dailyPlans[today] ?? createDailyWordPlan(englishWords, state, today, state.settings);
   const dailyWords = plan.wordIds.map((id) => wordMap.get(id)).filter((word): word is (typeof englishWords)[number] => Boolean(word));
-  const dueWords = englishWords.filter((word) => isDue(state.wordProgress[word.id], today));
+  const dueWords = englishWords.filter((word) => {
+    const progress = state.wordProgress[word.id];
+    return (progress?.status === "unknown" || progress?.status === "fuzzy") && isDue(progress, today);
+  });
   const stats = getLearningStats(state, plan, today);
 
   const updateWordProgress = (wordId: string, updater: (progress: WordProgress) => WordProgress) => {
@@ -128,7 +131,11 @@ export function EnglishLearning() {
     setState((current) => {
       const settings = { ...current.settings, dailyWordCount };
       const previousPlan = current.dailyPlans[today];
-      if (previousPlan?.wordIds.length && (previousPlan.startedAt || previousPlan.completedWordIds.length > 0)) return { ...current, settings };
+      if (previousPlan?.wordIds.length && (previousPlan.startedAt || previousPlan.completedWordIds.length > 0)) {
+        const nextState = { ...current, settings };
+        const nextPlan = getOrCreateDailyPlan(englishWords, nextState, today);
+        return { ...nextState, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } };
+      }
       const nextPlan = createDailyWordPlan(englishWords, { ...current, settings }, today, settings);
       return { ...current, settings, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } };
     });

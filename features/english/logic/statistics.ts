@@ -62,7 +62,10 @@ export function calculateLongestStreak(records: Record<string, DailyLearningReco
 
 export function getLearningStats(state: EnglishLearningState, plan: DailyWordPlan, today: string): LearningStats {
   const masteredTodayCount = plan.completedWordIds.filter((id) => state.wordProgress[id]?.status === "mastered").length;
-  const dueCount = Object.values(state.wordProgress).filter((progress) => progress.nextReviewAt && progress.nextReviewAt <= today).length;
+  const dueCount = Object.values(state.wordProgress).filter((progress) => {
+    const isReviewStatus = progress.status === "unknown" || progress.status === "fuzzy";
+    return isReviewStatus && progress.nextReviewAt && progress.nextReviewAt <= today;
+  }).length;
   const totalLearnedCount = Object.values(state.wordProgress).filter((progress) => progress.firstLearnedAt).length;
   const totalMasteredCount = Object.values(state.wordProgress).filter((progress) => progress.status === "mastered").length;
   return {
@@ -76,4 +79,3 @@ export function getLearningStats(state: EnglishLearningState, plan: DailyWordPla
     totalMasteredCount,
   };
 }
-
