@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronDown, Command, Languages, LayoutDashboard, Menu, MoreHorizontal, Plus, Search, Settings2, Sparkles, UserRound, X } from "lucide-react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { TodayPlan } from "@/features/today/TodayPlan";
-import { EnglishLearning } from "@/features/english/EnglishLearning";
 import { Speaking } from "@/features/speaking/Speaking";
 import { FinanceLearning } from "@/features/finance/FinanceLearning";
 import { Bookkeeping } from "@/features/bookkeeping/Bookkeeping";
@@ -22,6 +22,10 @@ import { useFirstBatchSync } from "@/features/sync/useFirstBatchSync";
 import { FirstBatchMigrationPrompt } from "@/features/migration/firstBatch/FirstBatchMigrationPrompt";
 import { useFirstBatchMigration } from "@/features/migration/firstBatch/useFirstBatchMigration";
 import { activeIconShapes, modules } from "@/lib/modules";
+
+const EnglishLearning = dynamic(() => import("@/features/english/EnglishLearning").then((module) => module.EnglishLearning), {
+  loading: () => <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备今天的学习内容…</div>,
+});
 
 const activeModuleStyles: Record<string, string> = {
   today: "bg-[#E7E9FF] text-[#5452C7]",

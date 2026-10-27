@@ -14,7 +14,7 @@ const word = (
   topic: string,
 ): EnglishWord => ({ id, word: value, phonetic, meaningZh, definitionEn, partOfSpeech, collocations, exampleSentence, exampleTranslation, difficulty, topic });
 
-export const englishWords: EnglishWord[] = [
+export const legacyEnglishWords: EnglishWord[] = [
   word("word-001", "adapt", "/əˈdæpt/", "适应；改编", "to change something so it fits a new situation", "动词", ["adapt to change", "adapt quickly"], "We need to adapt to the new schedule.", "我们需要适应新的时间安排。", "beginner", "成长"),
   word("word-002", "achieve", "/əˈtʃiːv/", "实现；取得", "to successfully reach a goal", "动词", ["achieve a goal", "achieve success"], "Small steps can help you achieve your goal.", "小步行动可以帮助你实现目标。", "beginner", "成长"),
   word("word-003", "approach", "/əˈprəʊtʃ/", "方法；接近", "a way of dealing with a problem or situation", "名词/动词", ["a practical approach", "approach a problem"], "This approach makes learning more enjoyable.", "这种方法让学习更有趣。", "intermediate", "学习"),
@@ -88,6 +88,8 @@ export const englishWords: EnglishWord[] = [
   word("word-071", "sustainable", "/səˈsteɪnəbəl/", "可持续的", "able to continue over a long period without causing harm", "形容词", ["a sustainable habit", "sustainable growth"], "A sustainable routine is better than a perfect plan that lasts one day.", "可持续的习惯比只坚持一天的完美计划更好。", "advanced", "成长"),
   word("word-072", "hesitate", "/ˈhezɪteɪt/", "犹豫", "to pause before doing or saying something because you are unsure", "动词", ["hesitate to ask", "without hesitation"], "Do not hesitate to ask when a word is unclear.", "遇到不清楚的单词时不要犹豫，直接提问。", "intermediate", "沟通"),
 ];
+
+export const englishWords: EnglishWord[] = legacyEnglishWords;
 
 const baseRecommendation = <T extends EnglishRecommendation["type"]>(
   id: string,

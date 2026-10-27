@@ -8,7 +8,8 @@ import { LearningOverview } from "./components/LearningOverview";
 import { RecommendationSection } from "./components/RecommendationSection";
 import { ReviewSection } from "./components/ReviewSection";
 import { VocabularyBook } from "./components/VocabularyBook";
-import { englishWords, recommendationData } from "./mockData";
+import { recommendationData } from "./mockData";
+import { fallbackEnglishWords, loadEnglishWords } from "./wordBank";
 import { applyWordStatus, isDue } from "./logic/spacedRepetition";
 import { createDailyWordPlan, getOrCreateDailyPlan } from "./logic/dailyPlan";
 import { buildDailyLearningRecord, getLearningStats } from "./logic/statistics";
@@ -16,9 +17,7 @@ import { getDateKey, formatDateLabel } from "./logic/date";
 import { createDefaultEnglishState, loadEnglishState, saveEnglishState } from "./storage";
 import { speakWord } from "./utils/speech";
 import { THIRD_BATCH_REMOTE_MERGED_EVENT } from "@/features/sync/events";
-import type { Accent, EnglishLearningState, WordProgress, WordStatus } from "./types";
-
-const wordMap = new Map(englishWords.map((word) => [word.id, word]));
+import type { Accent, EnglishLearningState, EnglishWord, WordProgress, WordStatus } from "./types";
 
 function emptyProgress(wordId: string): WordProgress {
   return { wordId, status: "unknown", reviewCount: 0, correctCount: 0, wrongCount: 0, isFavorite: false, isInVocabularyBook: false };
@@ -26,10 +25,13 @@ function emptyProgress(wordId: string): WordProgress {
 
 export function EnglishLearning() {
   const [today, setToday] = React.useState(() => getDateKey());
+  const [words, setWords] = React.useState<EnglishWord[]>(fallbackEnglishWords);
   const [state, setState] = React.useState<EnglishLearningState>(() => createDefaultEnglishState());
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isHydrated, setIsHydrated] = React.useState(false);
   const [notice, setNotice] = React.useState("");
+
+  const wordMap = React.useMemo(() => new Map(words.map((word) => [word.id, word])), [words]);
 
   React.useEffect(() => {
     const refreshToday = () => {
@@ -48,19 +50,29 @@ export function EnglishLearning() {
   }, []);
 
   React.useEffect(() => {
-    const stored = loadEnglishState();
-    const plan = getOrCreateDailyPlan(englishWords, stored, today);
-    setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
-    setCurrentIndex(0);
-    setIsHydrated(true);
+    let cancelled = false;
+    setIsHydrated(false);
+    loadEnglishWords().then((availableWords) => {
+      if (cancelled) return;
+      const stored = loadEnglishState();
+      const plan = getOrCreateDailyPlan(availableWords, stored, today);
+      setWords(availableWords);
+      setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
+      setCurrentIndex(0);
+      setIsHydrated(true);
+    });
+    return () => { cancelled = true; };
   }, [today]);
 
   React.useEffect(() => {
     const handleRemoteMerged = () => {
       const stored = loadEnglishState();
-      const plan = getOrCreateDailyPlan(englishWords, stored, today);
-      setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
-      setCurrentIndex((index) => Math.min(index, Math.max(0, plan.wordIds.length - 1)));
+      loadEnglishWords().then((availableWords) => {
+        const plan = getOrCreateDailyPlan(availableWords, stored, today);
+        setWords(availableWords);
+        setState(plan === stored.dailyPlans[today] ? stored : { ...stored, dailyPlans: { ...stored.dailyPlans, [today]: plan } });
+        setCurrentIndex((index) => Math.min(index, Math.max(0, plan.wordIds.length - 1)));
+      });
     };
     window.addEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
     return () => window.removeEventListener(THIRD_BATCH_REMOTE_MERGED_EVENT, handleRemoteMerged);
@@ -80,9 +92,9 @@ export function EnglishLearning() {
     return <div className="mx-auto max-w-[1240px] rounded-[24px] border border-line bg-white px-6 py-16 text-center text-sm text-muted shadow-card">正在准备今天的学习内容…</div>;
   }
 
-  const plan = state.dailyPlans[today] ?? createDailyWordPlan(englishWords, state, today, state.settings);
-  const dailyWords = plan.wordIds.map((id) => wordMap.get(id)).filter((word): word is (typeof englishWords)[number] => Boolean(word));
-  const dueWords = englishWords.filter((word) => {
+  const plan = state.dailyPlans[today] ?? createDailyWordPlan(words, state, today, state.settings);
+  const dailyWords = plan.wordIds.map((id) => wordMap.get(id)).filter((word): word is EnglishWord => Boolean(word));
+  const dueWords = words.filter((word) => {
     const progress = state.wordProgress[word.id];
     return (progress?.status === "unknown" || progress?.status === "fuzzy") && isDue(progress, today);
   });
@@ -133,10 +145,10 @@ export function EnglishLearning() {
       const previousPlan = current.dailyPlans[today];
       if (previousPlan?.wordIds.length && (previousPlan.startedAt || previousPlan.completedWordIds.length > 0)) {
         const nextState = { ...current, settings };
-        const nextPlan = getOrCreateDailyPlan(englishWords, nextState, today);
+        const nextPlan = getOrCreateDailyPlan(words, nextState, today);
         return { ...nextState, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } };
       }
-      const nextPlan = createDailyWordPlan(englishWords, { ...current, settings }, today, settings);
+      const nextPlan = createDailyWordPlan(words, { ...current, settings }, today, settings);
       return { ...current, settings, dailyPlans: { ...current.dailyPlans, [today]: nextPlan } };
     });
     setCurrentIndex(0);
@@ -159,7 +171,7 @@ export function EnglishLearning() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <LearningHistory records={state.learningRecords} today={today} currentStreak={stats.currentStreak} totalLearnedCount={stats.totalLearnedCount} totalMasteredCount={stats.totalMasteredCount} />
-        <VocabularyBook words={englishWords} progress={state.wordProgress} onStatus={(wordId, status) => handleStatus(wordId, status, false)} onFavorite={handleFavorite} onRemove={handleRemoveFromVocabulary} />
+        <VocabularyBook words={words} progress={state.wordProgress} onStatus={(wordId, status) => handleStatus(wordId, status, false)} onFavorite={handleFavorite} onRemove={handleRemoveFromVocabulary} />
       </div>
 
       <RecommendationSection items={recommendationData} recommendationState={state.recommendationState} onToggleFavorite={(id) => handleRecommendationState(id, "isFavorite")} onToggleWatched={(id) => handleRecommendationState(id, "isWatched")} />
